@@ -538,6 +538,12 @@ class SourceFile:
             for organised_segment in organised_paragraph[0]:
                 if organised_segment.tag == '{{{0}}}non-text-segment'.format(self.t_nsmap['kaplan']):
                     continue
+                if (len(organised_segment) == 0
+                        or (len(organised_paragraph[0][-1]) == 1
+                        and organised_paragraph[0][-1][-1].tag == '{{{0}}}text'.format(self.t_nsmap['kaplan'])
+                        and organised_paragraph[0][-1][-1].text is '')):
+                    organised_paragraph[0].remove(organised_segment)
+                    continue
                 if (organised_segment[0].tag == '{{{0}}}tag'.format(self.t_nsmap['kaplan'])
                 and organised_segment[0].attrib['type'] == 'end'):
                     if (organised_segment.getprevious()
@@ -572,9 +578,6 @@ class SourceFile:
 
                         organised_paragraph[0][_segment_i].append(organised_segment[0])
 
-                if len(organised_segment) == 0:
-                    organised_paragraph[0].remove(organised_segment)
-                    continue
 
                 active_ftags = []
                 no_text_yet = True
