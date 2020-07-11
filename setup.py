@@ -14,7 +14,11 @@ setuptools.setup(
     keywords = ['CAT', 'computer-assisted translation', 'computer-aided translation', 'translation', 'free-to-use'],
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/csengor/toraman-py',
+    url='https://github.com/kaplanPRO/kaplanpy',
+    project_urls = {
+        'Kaplan Desktop': 'https://sourceforge.net/projects/kaplan-desktop',
+        'Kaplan Homepage': 'https://kaplan.pro',
+    }
     packages=setuptools.find_packages(),
     install_requires=[
         'lxml',
