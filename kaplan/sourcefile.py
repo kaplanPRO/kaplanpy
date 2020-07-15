@@ -436,7 +436,7 @@ class SourceFile:
                         _hit = list(_hit)
                         mid_sentence_punctuation.append(_hit)
                 for to_be_replaced in mid_sentence_punctuation:
-                    kaplan_t.text = regex.sub(''.join(to_be_replaced),
+                    kaplan_t.text = regex.sub(regex.escape(''.join(to_be_replaced)),
                                                ''.join((to_be_replaced[0],
                                                         to_be_replaced[1],
                                                         to_be_replaced[2],
@@ -454,7 +454,7 @@ class SourceFile:
                         if _hit is not None:
                             mid_sentence_punctuation.append(_hit)
                     for to_be_replaced in mid_sentence_punctuation:
-                        kaplan_t.text = regex.sub(''.join(to_be_replaced),
+                        kaplan_t.text = regex.sub(regex.escape(''.join(to_be_replaced)),
                                                    ''.join((to_be_replaced[0],
                                                             to_be_replaced[1],
                                                             to_be_replaced[2],
@@ -473,7 +473,7 @@ class SourceFile:
                     if _hit is not None:
                         end_sentence_punctuation.append(_hit)
                 for to_be_replaced in end_sentence_punctuation:
-                    kaplan_t.text = regex.sub(''.join(to_be_replaced) + '(?!placeholder)',
+                    kaplan_t.text = regex.sub(regex.escape(''.join(to_be_replaced)) + '(?!placeholder)',
                                                ''.join((to_be_replaced[0],
                                                         to_be_replaced[1],
                                                         to_be_replaced[2],
