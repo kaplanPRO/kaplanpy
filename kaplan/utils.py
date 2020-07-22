@@ -164,7 +164,7 @@ def file_clean_up(directory_path):
         os.rmdir(root)
 
 def create_new_project_package(project_metadata, list_or_tuple_of_files, output_directory):
-    '''Creates a package containing all project files.
+    '''Creates a package containing selected project files.
     "manifest" is a dict containing project metadata.
     "list_or_tuple_of_files" is a list/tuple of lists/tuples, such as
     (path_to_source_file,
