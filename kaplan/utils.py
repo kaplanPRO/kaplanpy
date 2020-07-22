@@ -235,7 +235,7 @@ def create_new_project_package(project_metadata, list_or_tuple_of_files, output_
                                      encoding='UTF-8',
                                      xml_declaration=True)
 
-    with zipfile.ZipFile(os.path.join(output_directory, metadata['title']) + '.zip', 'w') as outzip:
+    with zipfile.ZipFile(os.path.join(output_directory, metadata['title']) + '.knpp', 'w') as outzip:
         for root, dirs, files in os.walk(temp_dir):
             for tempfile in files:
                 tempfile_path = os.path.join(root, tempfile)
