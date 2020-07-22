@@ -246,3 +246,30 @@ def create_new_project_package(project_metadata, list_or_tuple_of_files, output_
 
     return True
 
+def open_new_project_package(path_to_new_project_package, path_to_project_dir):
+    '''Extracts a new project package and returns the project's metadata.'''
+
+    from io import BytesIO
+    import os
+    import zipfile
+
+    assert(not os.path.isfile(path_to_project_dir)
+    and (not os.path.isdir(path_to_project_dir) or not len(os.listdir(path_to_project_dir)) > 0)), 'Project directory must be empty!'
+
+    with zipfile.ZipFile(path_to_new_project_package) as new_project_package:
+        namelist = new_project_package.namelist()
+        namelist.remove('project.xml')
+        new_project_package.extractall(path_to_project_dir, namelist)
+        metadata_xml = etree.parse(BytesIO(new_project_package.open('project.xml').read())).getroot()
+
+    metadata = {
+        'title': metadata_xml[0].text,
+        'src': metadata_xml[1].text,
+        'trgt': metadata_xml[2].text,
+        'files': []
+    }
+
+    for sourcefile_xml in metadata_xml[-1]:
+        metadata['files'].append(sourcefile_xml.text)
+
+    return metadata
