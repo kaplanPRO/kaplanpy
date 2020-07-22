@@ -162,3 +162,87 @@ def file_clean_up(directory_path):
         for target_file in files:
             os.remove(os.path.join(root, target_file))
         os.rmdir(root)
+
+def create_new_project_package(project_metadata, list_or_tuple_of_files, output_directory):
+    '''Creates a package containing all project files.
+    "manifest" is a dict containing project metadata.
+    "list_or_tuple_of_files" is a list/tuple of lists/tuples, such as
+    (path_to_source_file,
+    path_to_bilingualfile_from_source_lang_dir,
+    path_to_bilingualfile_from_target_lang_dir)
+    "path_to_package" is a string specifying the location of the project package.
+    '''
+
+    from .bilingualfile import BilingualFile
+
+    import os
+    import zipfile
+
+    metadata = {
+        'title': project_metadata['title'],
+        'src': project_metadata['src'],
+        'trgt': project_metadata['trgt'],
+        'files': []
+    }
+
+    if os.path.isfile(output_directory):
+        os.remove(output_directory)
+    if not os.path.isdir(output_directory):
+        os.mkdir(output_directory)
+
+    temp_dir = os.path.join(output_directory, '.temp')
+    if os.path.isfile(temp_dir):
+        os.remove(temp_dir)
+    elif os.path.isdir(temp_dir):
+        file_clean_up(temp_dir)
+
+    os.mkdir(temp_dir)
+
+    src_dir = os.path.join(temp_dir, metadata['src'])
+    os.mkdir(src_dir)
+    trgt_dir = os.path.join(temp_dir, metadata['trgt'])
+    os.mkdir(trgt_dir)
+
+    for file_tuple in list_or_tuple_of_files:
+        file_name = os.path.basename(file_tuple[0])
+        metadata['files'].append(file_name)
+
+        with open(file_tuple[0], 'rb') as infile:
+            with open(os.path.join(src_dir, file_name), 'wb') as outfile:
+                for line in infile:
+                    outfile.write(line)
+
+        original_bilingualfile = BilingualFile(file_tuple[1])
+        original_bilingualfile.save(src_dir)
+
+        target_bilingualfile = BilingualFile(file_tuple[2])
+        target_bilingualfile.save(trgt_dir)
+
+    metadata_xml = etree.Element('{{{0}}}meta'.format(nsmap['kaplan']), nsmap=nsmap)
+    etree.SubElement(metadata_xml, '{{{0}}}title'.format(nsmap['kaplan']))
+    metadata_xml[-1].text = metadata['title']
+    etree.SubElement(metadata_xml, '{{{0}}}source'.format(nsmap['kaplan']))
+    metadata_xml[-1].text = metadata['src']
+    etree.SubElement(metadata_xml, '{{{0}}}target'.format(nsmap['kaplan']))
+    metadata_xml[-1].text = metadata['trgt']
+    etree.SubElement(metadata_xml, '{{{0}}}files'.format(nsmap['kaplan']))
+    metadata_xml_files = metadata_xml[-1]
+    for file_name in metadata['files']:
+        etree.SubElement(metadata_xml_files, '{{{0}}}file'.format(nsmap['kaplan']))
+        metadata_xml_files[-1].text = file_name
+
+    metadata_xml.getroottree().write(os.path.join(temp_dir, 'project.xml'),
+                                     encoding='UTF-8',
+                                     xml_declaration=True)
+
+    with zipfile.ZipFile(os.path.join(output_directory, metadata['title']) + '.zip', 'w') as outzip:
+        for root, dirs, files in os.walk(temp_dir):
+            for tempfile in files:
+                tempfile_path = os.path.join(root, tempfile)
+                outzip.write(tempfile_path,
+                             tempfile_path[len(temp_dir):])
+
+    file_clean_up(temp_dir)
+
+    return True
+
