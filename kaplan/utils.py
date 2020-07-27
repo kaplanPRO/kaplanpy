@@ -246,6 +246,76 @@ def create_new_project_package(project_metadata, list_or_tuple_of_files, output_
 
     return True
 
+def create_return_project_package(project_metadata, list_or_tuple_of_files, output_directory):
+    '''Creates a package containing selected project files.
+    "manifest" is a dict containing project metadata.
+    "list_or_tuple_of_files" is a list/tuple of target bilingual files.
+    "path_to_package" is a string specifying the location of the project package.
+    '''
+
+    from .bilingualfile import BilingualFile
+
+    import os
+    import zipfile
+
+    metadata = {
+        'title': project_metadata['title'],
+        'src': project_metadata['src'],
+        'trgt': project_metadata['trgt'],
+        'files': []
+    }
+
+    if os.path.isfile(output_directory):
+        os.remove(output_directory)
+    if not os.path.isdir(output_directory):
+        os.mkdir(output_directory)
+
+    temp_dir = os.path.join(output_directory, '.temp')
+    if os.path.isfile(temp_dir):
+        os.remove(temp_dir)
+    elif os.path.isdir(temp_dir):
+        file_clean_up(temp_dir)
+
+    os.mkdir(temp_dir)
+
+    trgt_dir = os.path.join(temp_dir, metadata['trgt'])
+    os.mkdir(trgt_dir)
+
+    for target_bilingualfile in list_or_tuple_of_files:
+        file_name = os.path.basename(target_bilingualfile)
+        metadata['files'].append(file_name)
+
+        target_bilingualfile = BilingualFile(target_bilingualfile)
+        target_bilingualfile.save(trgt_dir)
+
+    metadata_xml = etree.Element('{{{0}}}meta'.format(nsmap['kaplan']), nsmap=nsmap)
+    etree.SubElement(metadata_xml, '{{{0}}}title'.format(nsmap['kaplan']))
+    metadata_xml[-1].text = metadata['title']
+    etree.SubElement(metadata_xml, '{{{0}}}source'.format(nsmap['kaplan']))
+    metadata_xml[-1].text = metadata['src']
+    etree.SubElement(metadata_xml, '{{{0}}}target'.format(nsmap['kaplan']))
+    metadata_xml[-1].text = metadata['trgt']
+    etree.SubElement(metadata_xml, '{{{0}}}files'.format(nsmap['kaplan']))
+    metadata_xml_files = metadata_xml[-1]
+    for file_name in metadata['files']:
+        etree.SubElement(metadata_xml_files, '{{{0}}}file'.format(nsmap['kaplan']))
+        metadata_xml_files[-1].text = file_name
+
+    metadata_xml.getroottree().write(os.path.join(temp_dir, 'project.xml'),
+                                     encoding='UTF-8',
+                                     xml_declaration=True)
+
+    with zipfile.ZipFile(os.path.join(output_directory, metadata['title']) + '.krpp', 'w') as outzip:
+        for root, dirs, files in os.walk(temp_dir):
+            for tempfile in files:
+                tempfile_path = os.path.join(root, tempfile)
+                outzip.write(tempfile_path,
+                             tempfile_path[len(temp_dir):])
+
+    file_clean_up(temp_dir)
+
+    return True
+
 def open_new_project_package(path_to_new_project_package, path_to_project_dir):
     '''Extracts a new project package and returns the project's metadata.'''
 
