@@ -33,7 +33,7 @@ class SourceFile:
 
         self.sha256_hash = self.sha256_hash.hexdigest()
 
-        self.file_name = file_path.replace('\\', '/').split('/')[-1]
+        self.file_name = os.path.basename(file_path)
 
         if file_path.lower().endswith('.docx'):
 
