@@ -2,7 +2,7 @@ import os, regex
 
 from lxml import etree
 
-from .utils import get_current_time_in_utc
+from .utils import get_current_time_in_utc, nsmap
 
 
 class BilingualFile:
@@ -18,7 +18,10 @@ class BilingualFile:
 
         self.file_type = self.xml_root.find('kaplan:source_file', self.t_nsmap).attrib['type']
         self.file_name = self.xml_root.find('kaplan:source_file', self.t_nsmap).attrib['name']
-        self.nsmap = self.xml_root.find('kaplan:source_file', self.t_nsmap)[0][0].nsmap
+        if len(self.xml_root.find('kaplan:source_file', self.t_nsmap)) > 0:
+            self.nsmap = self.xml_root.find('kaplan:source_file', self.t_nsmap)[0][0].nsmap
+        else:
+            self.nsmap = self.xml_root.nsmap
 
         for xml_paragraph in self.xml_root.find('kaplan:paragraphs', self.t_nsmap):
             paragraph_no = xml_paragraph.attrib['no']
@@ -379,6 +382,32 @@ class BilingualFile:
                                                             encoding='UTF-8',
                                                             xml_declaration=True)
                 return
+
+        elif self.file_type == 'po':
+            paragraphs = self.xml_root.find('kaplan:paragraphs', self.nsmap)
+
+            with open(os.path.join(output_directory, self.file_name), 'w') as outfile:
+                outfile.write(self.xml_root.find('kaplan:source_file', self.nsmap).text)
+                for p_i in range(len(self.paragraphs)):
+                    paragraph = paragraphs[p_i]
+                    segments = paragraph.findall('kaplan:segment', self.nsmap)
+                    outfile.write('\n')
+                    if 'metadata' in segments[0].attrib:
+                        outfile.write(segments[0].attrib['metadata'])
+                        outfile.write('\n')
+                    entry = []
+                    for s_i in range(len(segments)):
+                        segment_keys = segments[s_i].attrib['keys'].split(';')
+                        entry.insert(s_i, '{0} "{1}"'.format(segment_keys[0],
+                                                             segments[s_i].find('kaplan:source', self.nsmap)[0].text))
+                        entry.append('{0} "{1}"'.format(segment_keys[1],
+                                                        segments[s_i].find('kaplan:target', self.nsmap)[0].text))
+                    for line in entry:
+                        outfile.write(line)
+                        outfile.write('\n')
+                outfile.write('\n')
+
+            return
 
         # Filetype-specific processing ends here.
 

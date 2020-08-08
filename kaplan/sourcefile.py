@@ -33,7 +33,7 @@ class SourceFile:
 
         self.sha256_hash = self.sha256_hash.hexdigest()
 
-        self.file_name = file_path.replace('\\', '/').split('/')[-1]
+        self.file_name = os.path.basename(file_path)
 
         if file_path.lower().endswith('.docx'):
 
@@ -328,6 +328,97 @@ class SourceFile:
                     translation_unit.attrib['{{{0}}}paragraph-no'.format(self.t_nsmap['kaplan'])] = str(len(self.paragraphs))
             else:
                 return
+
+        elif file_path.lower().endswith('.po'):
+            self.file_type = 'po'
+
+            entries = []
+            regex_compile = regex.compile('([a-z0-9\[\]]+)?\s?"(.*?)"$')
+            with open(file_path, 'r', encoding='UTF-8') as po_file:
+                entry = {}
+                entry_metadata = []
+                last_element = ''
+
+                for line in po_file:
+
+                    line = line.strip()
+
+                    if line.startswith('#'):
+                        entry_metadata.append(line)
+                        continue
+
+                    regex_match = regex_compile.search(line)
+
+                    if line == '':
+                        if entry.get('msgid', None) is not None:
+                            entry['metadata'] = '\n'.join(entry_metadata)
+                            entries.append(entry)
+                        entry = {}
+                        entry_metadata = []
+                        last_element = ''
+                        continue
+
+                    if regex_match == None:
+                        continue
+
+                    if regex_match.group(1):
+                        last_element = regex_match.group(1)
+                        entry[last_element] = ''
+
+                    if regex_match.group(2):
+                        entry[last_element] += regex_match.group(2)
+                else:
+                    if entry.get('msgid', None) is not None:
+                        entries.append(entry)
+                        entry['metadata'] = '\n'.join(entry_metadata)
+                    entry = {}
+                    entry_metadata = []
+                    last_element = ''
+
+            po_metadata = entries[0]
+            entries = entries[1:]
+
+            for entry in entries:
+
+                self.paragraphs.append([])
+
+                segment_element = etree.Element('{{{0}}}segment'.format(self.t_nsmap['kaplan']))
+                if 'metadata' in entry:
+                    segment_element.attrib['metadata'] = entry['metadata']
+                segment_element.append(etree.Element('{{{0}}}source'.format(self.t_nsmap['kaplan'])))
+                segment_element[0].append(etree.Element('{{{0}}}text'.format(self.t_nsmap['kaplan'])))
+                segment_element[0][0].text = entry['msgid']
+                segment_element.append(etree.Element('{{{0}}}status'.format(self.t_nsmap['kaplan'])))
+                segment_element.append(etree.Element('{{{0}}}target'.format(self.t_nsmap['kaplan'])))
+                segment_element[2].append(etree.Element('{{{0}}}text'.format(self.t_nsmap['kaplan'])))
+                target_key = 'msgstr' if 'msgstr' in entry else 'msgstr[0]'
+                segment_element[2][0].text = entry[target_key]
+                segment_element.attrib['keys'] = ';'.join(('msgid', target_key))
+
+                self.paragraphs[-1].append(segment_element)
+
+                if 'msgid_plural' in entry or 'plural' in entry:
+
+                    segment_element = etree.Element('{{{0}}}segment'.format(self.t_nsmap['kaplan']))
+                    segment_element.append(etree.Element('{{{0}}}source'.format(self.t_nsmap['kaplan'])))
+                    segment_element[0].append(etree.Element('{{{0}}}text'.format(self.t_nsmap['kaplan'])))
+                    source_key = 'msgid_plural' if 'msgid_plural' in entry else 'plural'
+                    segment_element[0][0].text = entry[source_key]
+                    segment_element.append(etree.Element('{{{0}}}status'.format(self.t_nsmap['kaplan'])))
+                    segment_element.append(etree.Element('{{{0}}}target'.format(self.t_nsmap['kaplan'])))
+                    segment_element[2].append(etree.Element('{{{0}}}text'.format(self.t_nsmap['kaplan'])))
+                    segment_element[2][0].text = entry['msgstr[1]']
+                    segment_element.attrib['keys'] = ';'.join((source_key, 'msgstr[1]'))
+
+                    self.paragraphs[-1].append(segment_element)
+
+            po_details = '\n'.join('"' + line + '\\n"' for line in po_metadata['msgstr'].split('\\n') if line)
+
+            po_metadata = '{0}\nmsgid: ""\nmsgstr: ""\n{1}\n'.format(po_metadata['metadata'], po_details)
+
+            self.master_files.append(po_metadata)
+
+            return
 
         # Filetype-specific processing ends here.
 
@@ -748,12 +839,16 @@ class SourceFile:
                 new_sf_element = etree.Element('{{{0}}}internal_file'.format(self.t_nsmap['kaplan']),
                                             internal_path=master_file[0])
                 new_sf_element.append(master_file[1])
+
+                bilingual_file[-1].append(new_sf_element)
+            elif len(self.master_files) == 1 and type(master_file) == str:
+                bilingual_file[-1].text = master_file
             else:
                 new_sf_element = etree.Element('{{{0}}}internal_file'.format(self.t_nsmap['kaplan']))
                 for paragraph_placeholder in master_file[0]:
                     new_sf_element.append(paragraph_placeholder)
 
-            bilingual_file[-1].append(new_sf_element)
+                bilingual_file[-1].append(new_sf_element)
 
         bilingual_file.getroottree().write(os.path.join(output_directory, self.file_name) + '.xml',
                                            encoding='UTF-8',
