@@ -8,7 +8,7 @@ from .language_codes import language_codes
 
 nsmap = {'kaplan': 'https://kaplan.pro'}
 
-supported_file_formats = ('.docx', '.odp', '.ods', '.odt', '.txt', '.xliff')
+supported_file_formats = ('.docx', '.odp', '.ods', '.odt', '.txt', '.xliff', '.po')
 
 def get_current_time_in_utc():
     return datetime.datetime.utcnow().strftime(r'%Y%M%dT%H%M%SZ')
