@@ -11,8 +11,6 @@ from zipfile import ZipFile
 # Internal Python files
 from .utils import get_current_time_in_utc, nsmap
 
-kxliff_version = '0.0.1'
-
 
 class KXLIFF:
     '''
@@ -27,7 +25,7 @@ class KXLIFF:
     def __init__(self, *args):
         self.name = os.path.basename(args[0]) if type(args[0]) == str else args[0].name
         self.nsmap = {}
-        self.translation_units = []
+        self.translation_units = etree.Element('translation-units')
         self.xliff_variant = ''
         self.xml_root = etree.parse(args[0]).getroot()
 
@@ -73,14 +71,13 @@ class KXLIFF:
                         segment.text += subsegment.text
 
         for source_file in source_files:
-            source_file_no = source_files.index(source_file) + 1
+            source_file_no = str(source_files.index(source_file) + 1)
             translation_units = source_file.findall('.//trans-unit', self.nsmap)
             for translation_unit in translation_units:
-                translation_unit_no = translation_units.index(translation_unit) + 1
-                self.translation_units.append({
-                    'source_file_no': source_file_no,
-                    'segments': []
-                })
+                _trans_unit = etree.Element('trans-unit')
+                _trans_unit.attrib['file-id'] = source_file_no
+                _trans_unit.attrib['id'] = translation_unit.attrib['id']
+
                 tu_seg_source = translation_unit.find('seg-source', self.nsmap)
                 tu_target = translation_unit.find('target', self.nsmap)
                 if tu_seg_source is not None:
@@ -88,9 +85,10 @@ class KXLIFF:
                         _segment = etree.Element('segment')
                         etree.SubElement(_segment, 'source')
                         etree.SubElement(_segment, 'target')
-                        extract_segment(source_segment, _segment[0])
                         segment_no = _segment.attrib['no'] = source_segment.attrib['mid']
-                        target_segment = tu_target.find('.//mrk[@mid="{0}"]'.format(segment_no), self.nsmap)
+                        extract_segment(source_segment, _segment[0])
+
+                        target_segment = tu_target.find('.//mrk[@mid="{0}"]'.format(segment_no), self.nsmap) if tu_target is not None else None
                         if target_segment is not None:
                             extract_segment(target_segment, _segment[1])
                             if self.xliff_variant == 'kaplan':
@@ -98,44 +96,165 @@ class KXLIFF:
                             elif self.xliff_variant == 'sdl':
                                 _segment.attrib['state'] = translation_unit.find('sdl:seg-defs/sdl:seg[@id="{0}"]'.format(segment_no), self.nsmap).attrib['conf'].lower()
 
-                        self.translation_units[-1]['segments'].append(_segment)
+                        _trans_unit.append(_segment)
 
                 else:
-                    pass
+                    _segment = etree.Element('segment')
+                    etree.SubElement(_segment, 'source')
+                    etree.SubElement(_segment, 'target')
+                    extract_segment(translation_unit.find('source', self.nsmap), _segment[0])
+
+                    target_segment = translation_unit.find('target', self.nsmap)
+                    if target_segment is not None:
+                        extract_segment(target_segment, _segment[1])
+
+                    _trans_unit.append(_segment)
+
+                self.translation_units.append(_trans_unit)
+
+    def generate_target_translations(self, target_directory, source_file=None):
+        '''
+        Generates a "clean" target file.
+
+        Args:
+            target_directory: Path to target directory where the target file will be saved.
+            source_file (optional): Path to source file (Required for file types such as .docx, .odt, etc.).
+
+        '''
+        source_filename = self.xml_root.findall('file', self.nsmap)[0].attrib['original']
+
+        if source_filename.lower().endswith('.txt'):
+            with open(os.path.join(target_directory, source_filename), 'w') as outfile:
+                for trans_unit in self.xml_root.find('.//body', self.nsmap):
+                    if trans_unit[2].text is not None:
+                        outfile.write(trans_unit[2].text)
+
+                    for segment in trans_unit[2]:
+                        if segment.text is not None:
+                            outfile.write(segment.text)
+                        else:
+                            outfile.write(trans_unit[1].find('mrk[@mid="{0}"]'.format(segment.attrib['mid']), self.nsmap).text)
+
+                        outfile.write(segment.tail)
+
+        else:
+            raise ValueError('Filetype incompatible for this task!')
 
     @classmethod
-    def new(cls, *args):
+    def new(cls, source_file, source_language):
         '''
         Takes in a source file and returns a KXLIFF instance.
 
         Args:
-            args[0]: Either the path to a source file or a source file as a BytesIO
-                     instance. The BytesIO instance must have its name attribute
-                     set to the name of the file.
-            args[1] (optional): An output directory to save the returned kxliff file.
+            source_file: Path to a source file.
+            source_language: ISO 639-1 code of the source language.
         '''
 
-        pass
+        name = os.path.basename(source_file)
+
+        if name.lower().endswith(('.kxliff', '.sdlxliff', '.xliff')):
+            return cls(source_file)
+
+        _segment_counter = 1
+        _tu_counter = 1
+
+        xml_root = etree.Element('{{{0}}}xliff'.format(nsmap[None]), nsmap=nsmap)
+
+        _tu_template = etree.Element('{{{0}}}trans-unit'.format(nsmap[None]))
+        etree.SubElement(_tu_template, '{{{0}}}source'.format(nsmap[None]))
+        _tu_template[0].text = ''
+        etree.SubElement(_tu_template, '{{{0}}}seg-source'.format(nsmap[None]))
+        _tu_template[1].text = ''
+        etree.SubElement(_tu_template, '{{{0}}}target'.format(nsmap[None]))
+
+        if name.lower().endswith('.txt'):
+
+            etree.SubElement(xml_root, '{{{0}}}file'.format(nsmap[None]))
+            xml_root[-1].attrib['source_language'] = source_language
+            xml_root[-1].attrib['original'] = source_file
+            translation_units = etree.SubElement(xml_root[-1], '{{{0}}}body'.format(nsmap[None]))
+
+            xml_root[0]
+            with open(source_file, encoding='UTF-8') as source_file:
+                _tu = _tu_template.__copy__()
+                _tu.attrib['id'] = str(_tu_counter)
+                translation_units.append(_tu)
+                _tu_counter += 1
+                for line in source_file:
+                    line = line.strip()
+
+                    if line == '':
+                        if len(_tu[1]) == 0:
+                            _tu[1].text += line + '\n'
+                            _tu[2].text += line + '\n'
+                        else:
+                            _tu[1][0].tail += line + '\n'
+                            _tu[2][0].tail += line + '\n'
+
+                    else:
+                        _source = etree.Element('{{{0}}}mrk'.format(nsmap[None]))
+                        _source.attrib['mtype'] = 'seg'
+                        _source.attrib['mid'] = str(_segment_counter)
+                        _source.text = line
+                        _source.tail = '\n'
+
+                        _target = etree.Element('{{{0}}}mrk'.format(nsmap[None]))
+                        _target.attrib['mtype'] = 'seg'
+                        _target.attrib['mid'] = str(_segment_counter)
+                        _target.attrib['state'] = 'blank'
+
+                        _segment_counter += 1
+
+                        if len(_tu[1]) == 1:
+                            _tu = _tu_template.__copy__()
+                            _tu.attrib['id'] = str(_tu_counter)
+                            translation_units.append(_tu)
+                            _tu_counter += 1
+
+                        _tu[1].append(_source)
+                        _tu[1][0].tail = '\n'
+                        _tu[2].append(_target)
+                        _tu[2][0].tail = '\n'
+
+                    _tu[0].text += line + '\n'
+
+        kxliff = BytesIO(etree.tostring(xml_root))
+        kxliff.name = name + '.kxliff'
+
+        return cls(kxliff)
 
     def save(self, output_directory):
         self.xml_root.getroottree().write(os.path.join(output_directory, self.name),
                                           encoding='UTF-8',
                                           xml_declaration=True)
 
-    def update_segment(self, segment_state, target_segment, tu_no, segment_no):
+    def update_segment(self, segment_state, target_segment, tu_no, segment_no=None):
         '''
         Updates a given segment.
 
         Args:
             segment_state (str): The state of the segment (ie. translated, signed-off, etc.).
             target_segment (str): Target segment in HTML.
-            tu_no (str or int): Index no of the translation unit.
-            segment_no (str or int): ID of the segment.
+            tu_no (str or int): The number of the translation unit .
+            segment_no (str or int) (optional): The number of the segment. Segments
+                                                that make up the entire tu do not have numbers.
         '''
 
-        translation_unit = self.xml_root.findall('.//trans-unit', self.nsmap)[tu_no]
+        translation_unit = self.xml_root.findall('.//trans-unit', self.nsmap)[int(tu_no) - 1]
         target = translation_unit.find('target', self.nsmap)
+        _trans_unit = self.translation_units.find('trans-unit[@no="{0}"]'.format(tu_no))
         if translation_unit.find('seg-source', self.nsmap) is not None:
-            target.find('mrk[@mid="{0}"]'.format(segment_no), self.nsmap).text = target_segment
+            if segment_no is None:
+                raise ValueError('Parameter "segment_no" is missing.')
+            target = target.find('mrk[@mid="{0}"]'.format(segment_no), self.nsmap)
+            _target = _trans_unit.find('segment[@no="{0}"]'.format(segment_no))[1]
         else:
-            target.text = target_segment
+            _target = _trans_unit[0][1]
+
+        target.text = ''
+        for child in target:
+            target.remove(child)
+        target.text = target_segment
+
+        _target.clear()
+        _target.text = target_segment
