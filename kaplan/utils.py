@@ -6,7 +6,10 @@ from lxml import etree
 
 from .language_codes import language_codes
 
-nsmap = {'kaplan': 'https://kaplan.pro'}
+nsmap = {
+    None: 'urn:oasis:names:tc:xliff:document:1.2',
+    'kaplan': 'https://kaplan.pro'
+}
 
 supported_file_formats = ('.docx', '.odp', '.ods', '.odt', '.txt', '.xliff', '.po')
 
