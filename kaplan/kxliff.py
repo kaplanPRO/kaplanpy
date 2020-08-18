@@ -133,9 +133,9 @@ class KXLIFF:
                 if po_id not in po_entries:
                     po_entries[po_id] = [trans_unit.attrib['metadata'], [], []]
                 _source = trans_unit.find('source', self.nsmap)
-                po_entries[po_id][1].append('{0}: "{1}"'.format(_source.attrib['key'], _source.text))
+                po_entries[po_id][1].append('{0} "{1}"'.format(_source.attrib['key'], _source.text))
                 _target = trans_unit.find('target', self.nsmap)
-                po_entries[po_id][2].append('{0}: "{1}"'.format(_target.attrib['key'], _source.text))
+                po_entries[po_id][2].append('{0} "{1}"'.format(_target.attrib['key'], _source.text))
 
             with open(os.path.join(target_directory, source_filename), 'w') as outfile:
                 outfile.write(source_file.find('kaplan:internal-file', self.nsmap).text + '\n')
@@ -200,9 +200,9 @@ class KXLIFF:
 
                 return entries
 
-            etree.SubElement(xml_root, '{{{0}}}file'.format(nsmap[None]))
-            xml_root[-1].attrib['source_language'] = source_language
-            xml_root[-1].attrib['original'] = source_file
+            source_file_reference = etree.SubElement(xml_root, '{{{0}}}file'.format(nsmap[None]))
+            source_file_reference.attrib['source_language'] = source_language
+            source_file_reference.attrib['original'] = source_file
             translation_units = etree.SubElement(xml_root[-1], '{{{0}}}body'.format(nsmap[None]))
 
             entries = []
@@ -240,10 +240,9 @@ class KXLIFF:
                 else:
                     entries = entry_checkpoint(entry, entry_metadata, entries)
 
-            po_metadata = '{0}\nmsgid: ""\nmsgstr: ""\n{1}\n'.format(entries[0]['metadata'],
+            po_metadata = '{0}\nmsgid ""\nmsgstr ""\n{1}\n'.format(entries[0]['metadata'],
                                                                      '\n'.join('"' + line + '\\n"' for line in entries[0]['msgstr'].split('\\n') if line))
 
-            source_file_reference = xml_root.find('file', nsmap)
             source_file_content = etree.Element('{{{0}}}internal-file'.format(nsmap['kaplan']))
             source_file_content.attrib['{{{0}}}rel'.format(nsmap['kaplan'])] = 'self'
             source_file_content.text = po_metadata
