@@ -123,7 +123,32 @@ class KXLIFF:
         '''
         source_filename = self.xml_root.findall('file', self.nsmap)[0].attrib['original']
 
-        if source_filename.lower().endswith('.txt'):
+        if source_filename.lower().endswith('.po'):
+            po_entries = {}
+
+            source_file = self.xml_root.findall('file', self.nsmap)[0]
+
+            for trans_unit in source_file.find('body', self.nsmap):
+                po_id = int(trans_unit.attrib.get('rid', trans_unit.attrib['id']))
+                if po_id not in po_entries:
+                    po_entries[po_id] = [trans_unit.attrib['metadata'], [], []]
+                _source = trans_unit.find('source', self.nsmap)
+                po_entries[po_id][1].append('{0}: "{1}"'.format(_source.attrib['key'], _source.text))
+                _target = trans_unit.find('target', self.nsmap)
+                po_entries[po_id][2].append('{0}: "{1}"'.format(_target.attrib['key'], _source.text))
+
+            with open(os.path.join(target_directory, source_filename), 'w') as outfile:
+                outfile.write(source_file.find('kaplan:internal-file', self.nsmap).text + '\n')
+
+                for po_entry_i in sorted(po_entries):
+                    po_entry = po_entries[po_entry_i]
+                    outfile.write(po_entry[0] + '\n')
+                    for line in po_entry[1] + po_entry[2]:
+                        outfile.write(line + '\n')
+                    else:
+                        outfile.write('\n')
+
+        elif source_filename.lower().endswith('.txt'):
             with open(os.path.join(target_directory, source_filename), 'w') as outfile:
                 for trans_unit in self.xml_root.find('.//body', self.nsmap):
                     if trans_unit[2].text is not None:
@@ -163,18 +188,101 @@ class KXLIFF:
         _tu_template = etree.Element('{{{0}}}trans-unit'.format(nsmap[None]))
         etree.SubElement(_tu_template, '{{{0}}}source'.format(nsmap[None]))
         _tu_template[0].text = ''
-        etree.SubElement(_tu_template, '{{{0}}}seg-source'.format(nsmap[None]))
-        _tu_template[1].text = ''
         etree.SubElement(_tu_template, '{{{0}}}target'.format(nsmap[None]))
+        _tu_template[1].text = ''
 
-        if name.lower().endswith('.txt'):
+        if name.lower().endswith('.po'):
+
+            def entry_checkpoint(entry, entry_metadata, entries):
+                if entry.get('msgid', None) is not None:
+                    entry['metadata'] = '\n'.join(entry_metadata)
+                    entries.append(entry)
+
+                return entries
 
             etree.SubElement(xml_root, '{{{0}}}file'.format(nsmap[None]))
             xml_root[-1].attrib['source_language'] = source_language
             xml_root[-1].attrib['original'] = source_file
             translation_units = etree.SubElement(xml_root[-1], '{{{0}}}body'.format(nsmap[None]))
 
-            xml_root[0]
+            entries = []
+
+            regex_compile = regex.compile('([a-z0-9\[\]]+)?\s?"(.*?)"$')
+
+            with open(source_file, encoding='UTF-8') as po_file:
+                entry = {}
+                entry_metadata = []
+                last_element = ''
+
+                for line in po_file:
+                    line = line.strip()
+
+                    if line.startswith('#'):
+                        entry_metadata.append(line)
+                        continue
+
+                    if line == '':
+                        entries = entry_checkpoint(entry, entry_metadata, entries)
+                        entry, entry_metadata, last_element = {}, [], ''
+                        continue
+
+                    regex_match = regex_compile.search(line)
+
+                    if regex_match == None:
+                        continue
+
+                    if regex_match.group(1):
+                        last_element = regex_match.group(1)
+                        entry[last_element] = ''
+
+                    if regex_match.group(2):
+                        entry[last_element] += regex_match.group(2)
+                else:
+                    entries = entry_checkpoint(entry, entry_metadata, entries)
+
+            po_metadata = '{0}\nmsgid: ""\nmsgstr: ""\n{1}\n'.format(entries[0]['metadata'],
+                                                                     '\n'.join('"' + line + '\\n"' for line in entries[0]['msgstr'].split('\\n') if line))
+
+            source_file_reference = xml_root.find('file', nsmap)
+            source_file_content = etree.Element('{{{0}}}internal-file'.format(nsmap['kaplan']))
+            source_file_content.attrib['{{{0}}}rel'.format(nsmap['kaplan'])] = 'self'
+            source_file_content.text = po_metadata
+            source_file_reference.insert(0, source_file_content)
+
+            entries = entries[1:]
+
+            for entry in entries:
+                _tu = _tu_template.__copy__()
+                _tu.attrib['id'] = str(_tu_counter)
+                _tu.attrib['metadata'] = entry.get('metadata', '')
+                translation_units.append(_tu)
+                _tu_counter += 1
+                _tu[0].text = entry['msgid']
+                _tu[0].attrib['key'] = 'msgid'
+                _target_key = 'msgstr' if 'msgstr' in entry else 'msgstr[0]'
+                _tu[1].text = entry[_target_key]
+                _tu[1].attrib['key'] = _target_key
+
+                if 'msgid_plural' in entry or 'plural' in entry:
+                    _tu.attrib['rid'] = _tu.attrib['id']
+                    _source_key = 'msgid_plural' if 'msgid_plural' in entry else 'plural'
+                    _tu = _tu.__copy__()
+                    _tu.attrib['id'] = str(_tu_counter)
+                    translation_units.append(_tu)
+                    _tu_counter += 1
+                    _tu[0].text = entry[_source_key]
+                    _tu[0].attrib['key'] = _source_key
+                    _tu[1].text = entry.get('msgstr[1]', '')
+                    _tu[1].attrib['key'] = 'msgstr[1]'
+
+        elif name.lower().endswith('.txt'):
+            _tu_template.insert(1, etree.Element('{{{0}}}seg-source'.format(nsmap[None])))
+
+            etree.SubElement(xml_root, '{{{0}}}file'.format(nsmap[None]))
+            xml_root[-1].attrib['source_language'] = source_language
+            xml_root[-1].attrib['original'] = source_file
+            translation_units = etree.SubElement(xml_root[-1], '{{{0}}}body'.format(nsmap[None]))
+
             with open(source_file, encoding='UTF-8') as source_file:
                 _tu = _tu_template.__copy__()
                 _tu.attrib['id'] = str(_tu_counter)
