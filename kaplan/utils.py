@@ -165,6 +165,8 @@ def remove_dir(path_to_dir):
             os.remove(os.path.join(root, target_file))
         os.rmdir(root)
 
+file_clean_up = remove_dir
+
 def create_new_project_package(project_metadata, list_or_tuple_of_files, output_directory):
     '''Creates a package containing selected project files.
     "manifest" is a dict containing project metadata.
