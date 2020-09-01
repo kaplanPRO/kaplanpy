@@ -155,12 +155,12 @@ def analyse_files(file_path_or_paths, tm_paths=[], source_language=None, target_
 
     return report
 
-def file_clean_up(directory_path):
-    '''Removes all files inside the given directory path.'''
+def remove_dir(path_to_dir):
+    '''Removes a non-empty dir.'''
 
     import os
 
-    for root, dirs, files in os.walk(directory_path, topdown=False):
+    for root, dirs, files in os.walk(path_to_dir, topdown=False):
         for target_file in files:
             os.remove(os.path.join(root, target_file))
         os.rmdir(root)
