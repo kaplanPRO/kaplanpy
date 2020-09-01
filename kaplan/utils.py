@@ -7,7 +7,6 @@ from lxml import etree
 from .language_codes import language_codes
 
 nsmap = {
-    None: 'urn:oasis:names:tc:xliff:document:1.2',
     'kaplan': 'https://kaplan.pro'
 }
 
