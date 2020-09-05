@@ -1,6 +1,8 @@
 # Installed libraries
 from lxml import etree
+import random
 import regex
+import string
 import zipfile
 
 # Standard Python libraries
@@ -628,6 +630,127 @@ class KXLIFF:
                         _tu[0].remove(_target)
 
                     _source.text = line
+
+        _regex = (regex.compile(r'(\s+|^)'
+                                r'(\p{Lu}\p{L}{0,3})'
+                                r'(\.+)'
+                                r'(\s+|$)'),
+                  regex.compile(r'(\s+|^)'
+                                r'([\p{Lu}\p{L}]+)'
+                                r'([\.\!\?\:]+)'
+                                r'(\s+|$)'))
+
+        for translation_unit in source_file_reference.findall('.//xliff:unit', nsmap):
+            for segment in translation_unit.findall('.//xliff:segment', nsmap):
+
+                source = segment.find('xliff:source', nsmap)
+                source_text = ''
+
+                source_text += source.text if source.text is not None else ''
+                for child in source:
+                    source_text += child.tail if child.tail is not None else ''
+
+                if len(source_text.split()) <= 1:
+                    continue
+
+                placeholders = ['placeholder_to_keep_segment_going',
+                                'placeholder_to_end_segment']
+                while placeholders[0] in source_text:
+                    placeholders[0] += random.choice(string.ascii_letters)
+                while placeholders[1] in source_text:
+                    placeholders[1] += random.choice(string.ascii_letters)
+
+                for hit in regex.findall(_regex[0], source_text):
+                    if hit is not None:
+                        source_text = regex.sub(regex.escape(''.join(hit)),
+                                                ''.join((hit[0],
+                                                         hit[1],
+                                                         hit[2],
+                                                         placeholders[0],
+                                                         hit[3])),
+                                                source_text,
+                                                1)
+
+                for hit in regex.findall(_regex[1], source_text):
+                    if hit is not None:
+                        source_text = regex.sub(regex.escape(''.join(hit)),
+                                                ''.join((hit[0],
+                                                         hit[1],
+                                                         hit[2],
+                                                         placeholders[1],
+                                                         hit[3])),
+                                                source_text,
+                                                1)
+
+                source_text = regex.sub(placeholders[0], '', source_text)
+                len_sentences = []
+                for sentence in source_text.split(placeholders[1]):
+                    if sentence is not None and sentence != '':
+                        len_sentences.append(len(sentence))
+
+                new_segments = etree.Element('{{{0}}}segments'.format(nsmap['xliff']))
+                new_segment = etree.SubElement(new_segments, '{{{0}}}segment'.format(nsmap['xliff']))
+                new_source = etree.SubElement(new_segment, '{{{0}}}source'.format(nsmap['xliff']))
+                etree.SubElement(new_segment, '{{{0}}}target'.format(nsmap['xliff']))
+
+                def create_segments(text_element, len_sentences, new_segment, new_source, new_segments=new_segments):
+                    while text_element is not None and len(text_element) > 0:
+                        if len(text_element) >= len_sentences[0]:
+
+                            if len(new_source) == 0:
+                                if new_source.text is None:
+                                    new_source.text = ''
+                                new_source.text += text_element[:len_sentences[0]]
+                            else:
+                                if new_source[-1].tail is None:
+                                    new_source[-1].tail = ''
+                                new_source[-1].tail += text_element[:len_sentences[0]]
+                            text_element = text_element[len_sentences[0]:]
+
+                            len_sentences = len_sentences[1:]
+                            new_segment = etree.SubElement(new_segments, '{{{0}}}segment'.format(nsmap['xliff']))
+                            new_source = etree.SubElement(new_segment, '{{{0}}}source'.format(nsmap['xliff']))
+                            etree.SubElement(new_segment, '{{{0}}}target'.format(nsmap['xliff']))
+                        else:
+                            if len(new_source) == 0:
+                                if new_source.text is None:
+                                    new_source.text = ''
+                                new_source.text += text_element
+                            else:
+                                if new_source[-1].tail is None:
+                                    new_source[-1].tail = ''
+                                new_source[-1].tail += text_element
+
+                            len_sentences[0] -= len(text_element)
+                            text_element = None
+
+                    return len_sentences, new_segment, new_source
+
+                source_text = source.text
+                if source_text is not None:
+                    source.text = None
+                    len_sentences, new_segment, new_source = create_segments(source_text,
+                                                                             len_sentences,
+                                                                             new_segment,
+                                                                             new_source)
+
+                for child in source:
+                    child_tail = child.tail
+                    new_source.append(child)
+                    if child.tail is not None:
+                        child.tail = None
+                        len_sentences, new_segment, new_source = create_segments(child_tail,
+                                                                                 len_sentences,
+                                                                                 new_segment,
+                                                                                 new_source)
+
+                segment_parent = segment.getparent()
+                segment_i = segment_parent.index(segment)
+                segment_parent.remove(segment)
+
+                for new_segment in new_segments:
+                    segment_parent.insert(segment_i, new_segment)
+                    segment_i += 1
 
         kxliff = BytesIO(etree.tostring(xml_root, encoding='UTF-8'))
         kxliff.name = name + '.kxliff'
