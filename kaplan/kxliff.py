@@ -373,7 +373,7 @@ class KXLIFF:
                             source_xml[-1].tail = ''
                         source_xml[-1].tail += text
 
-                def add_placeholder(tu, source_xml, data, tag, equiv=None, equiv_with_no=False):
+                def add_placeholder(tu, source_xml, data, tag, equiv=None, standalone=True, equiv_with_no=False):
                     original_data = tu.find('{{{0}}}originalData'.format(nsmap['xliff']))
                     if original_data is None:
                         original_data = etree.Element('{{{0}}}originalData'.format(nsmap['xliff']))
@@ -394,9 +394,9 @@ class KXLIFF:
                     if equiv is None:
                         equiv = data.tag.split('}')[-1]
                     if equiv_with_no:
-                        equiv = '<{0}-{1}/>'.format(equiv, _tag_id)
+                        equiv = '<{0}-{1}{2}>'.format(equiv, _tag_id, '/' if standalone else '')
                     else:
-                        equiv = '<{0}/>'.format(data.tag.split('}')[-1])
+                        equiv = '<{0}{1}>'.format(data.tag.split('}')[-1], '/' if standalone else '')
 
                     _tag.attrib['equiv'] = equiv
 
@@ -414,7 +414,7 @@ class KXLIFF:
                         run_w_properties = etree.Element('{{{0}}}r'.format(source_nsmap['w']), paragraph_child.getparent().attrib)
                         run_w_properties.append(run_properties)
 
-                        _tag_i = add_placeholder(tu, source_xml, run_w_properties, 'sc', 'tag', True)
+                        _tag_i = add_placeholder(tu, source_xml, run_w_properties, 'sc', 'tag', False, True)
 
                     for paragraph_grandchild in paragraph_child:
                         extract_or_pass(paragraph_grandchild,
@@ -437,7 +437,7 @@ class KXLIFF:
                             run_w_properties.append(run_properties)
                             paragraph_child = paragraph_child[0]
 
-                    _tag_i = add_placeholder(tu, source_xml, hyperlink, 'sc', 'link', True)
+                    _tag_i = add_placeholder(tu, source_xml, hyperlink, 'sc', 'link', False, True)
 
                     for paragraph_grandchild in paragraph_child:
                         extract_or_pass(paragraph_grandchild,
@@ -457,7 +457,7 @@ class KXLIFF:
                     add_placeholder(tu, source_xml, paragraph_child, 'ph')
 
                 elif paragraph_child.tag.endswith('}drawing'):
-                    add_placeholder(tu, source_xml, paragraph_child, 'ph', True)
+                    add_placeholder(tu, source_xml, paragraph_child, 'ph', True, True)
 
 
             _internal_files = []
