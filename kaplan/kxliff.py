@@ -640,117 +640,297 @@ class KXLIFF:
                                 r'([\.\!\?\:]+)'
                                 r'(\s+|$)'))
 
-        for translation_unit in source_file_reference.findall('.//xliff:unit', nsmap):
-            for segment in translation_unit.findall('.//xliff:segment', nsmap):
+        for segment in source_file_reference.findall('.//xliff:segment', nsmap):
 
-                source = segment.find('xliff:source', nsmap)
-                source_text = ''
+            source = segment.find('xliff:source', nsmap)
+            source_text = ''
 
-                source_text += source.text if source.text is not None else ''
-                for child in source:
-                    source_text += child.tail if child.tail is not None else ''
+            source_text += source.text if source.text is not None else ''
+            for child in source:
+                source_text += child.tail if child.tail is not None else ''
 
-                if len(source_text.split()) <= 1:
-                    continue
+            if len(source_text.split()) <= 1:
+                continue
 
-                placeholders = ['placeholder_to_keep_segment_going',
-                                'placeholder_to_end_segment']
-                while placeholders[0] in source_text:
-                    placeholders[0] += random.choice(string.ascii_letters)
-                while placeholders[1] in source_text:
-                    placeholders[1] += random.choice(string.ascii_letters)
+            placeholders = ['placeholder_to_keep_segment_going',
+                            'placeholder_to_end_segment']
+            while placeholders[0] in source_text:
+                placeholders[0] += random.choice(string.ascii_letters)
+            while placeholders[1] in source_text:
+                placeholders[1] += random.choice(string.ascii_letters)
 
-                for hit in regex.findall(_regex[0], source_text):
-                    if hit is not None:
-                        source_text = regex.sub(regex.escape(''.join(hit)),
-                                                ''.join((hit[0],
-                                                         hit[1],
-                                                         hit[2],
-                                                         placeholders[0],
-                                                         hit[3])),
-                                                source_text,
-                                                1)
+            for hit in regex.findall(_regex[0], source_text):
+                if hit is not None:
+                    source_text = regex.sub(regex.escape(''.join(hit)),
+                                            ''.join((hit[0],
+                                                     hit[1],
+                                                     hit[2],
+                                                     placeholders[0],
+                                                     hit[3])),
+                                            source_text,
+                                            1)
 
-                for hit in regex.findall(_regex[1], source_text):
-                    if hit is not None:
-                        source_text = regex.sub(regex.escape(''.join(hit)),
-                                                ''.join((hit[0],
-                                                         hit[1],
-                                                         hit[2],
-                                                         placeholders[1],
-                                                         hit[3])),
-                                                source_text,
-                                                1)
+            for hit in regex.findall(_regex[1], source_text):
+                if hit is not None:
+                    source_text = regex.sub(regex.escape(''.join(hit)),
+                                            ''.join((hit[0],
+                                                     hit[1],
+                                                     hit[2],
+                                                     placeholders[1],
+                                                     hit[3])),
+                                            source_text,
+                                            1)
 
-                source_text = regex.sub(placeholders[0], '', source_text)
-                len_sentences = []
-                for sentence in source_text.split(placeholders[1]):
-                    if sentence is not None and sentence != '':
-                        len_sentences.append(len(sentence))
+            source_text = regex.sub(placeholders[0], '', source_text)
+            len_sentences = []
+            for sentence in source_text.split(placeholders[1]):
+                if sentence is not None and sentence != '':
+                    len_sentences.append(len(sentence))
 
-                new_segments = etree.Element('{{{0}}}segments'.format(nsmap['xliff']))
-                new_segment = etree.SubElement(new_segments, '{{{0}}}segment'.format(nsmap['xliff']))
-                new_source = etree.SubElement(new_segment, '{{{0}}}source'.format(nsmap['xliff']))
-                etree.SubElement(new_segment, '{{{0}}}target'.format(nsmap['xliff']))
+            new_segments = etree.Element('{{{0}}}segments'.format(nsmap['xliff']))
+            new_segment = etree.SubElement(new_segments, '{{{0}}}segment'.format(nsmap['xliff']))
+            new_source = etree.SubElement(new_segment, '{{{0}}}source'.format(nsmap['xliff']))
+            etree.SubElement(new_segment, '{{{0}}}target'.format(nsmap['xliff']))
 
-                def create_segments(text_element, len_sentences, new_segment, new_source, new_segments=new_segments):
-                    while text_element is not None and len(text_element) > 0:
-                        if len(text_element) >= len_sentences[0]:
+            def create_segments(text_element, len_sentences, new_segment, new_source, new_segments=new_segments):
+                while text_element is not None and len(text_element) > 0:
+                    if len(text_element) >= len_sentences[0]:
 
-                            if len(new_source) == 0:
-                                if new_source.text is None:
-                                    new_source.text = ''
-                                new_source.text += text_element[:len_sentences[0]]
-                            else:
-                                if new_source[-1].tail is None:
-                                    new_source[-1].tail = ''
-                                new_source[-1].tail += text_element[:len_sentences[0]]
-                            text_element = text_element[len_sentences[0]:]
-
-                            len_sentences = len_sentences[1:]
-                            new_segment = etree.SubElement(new_segments, '{{{0}}}segment'.format(nsmap['xliff']))
-                            new_source = etree.SubElement(new_segment, '{{{0}}}source'.format(nsmap['xliff']))
-                            etree.SubElement(new_segment, '{{{0}}}target'.format(nsmap['xliff']))
+                        if len(new_source) == 0:
+                            if new_source.text is None:
+                                new_source.text = ''
+                            new_source.text += text_element[:len_sentences[0]]
                         else:
-                            if len(new_source) == 0:
-                                if new_source.text is None:
-                                    new_source.text = ''
-                                new_source.text += text_element
-                            else:
-                                if new_source[-1].tail is None:
-                                    new_source[-1].tail = ''
-                                new_source[-1].tail += text_element
+                            if new_source[-1].tail is None:
+                                new_source[-1].tail = ''
+                            new_source[-1].tail += text_element[:len_sentences[0]]
+                        text_element = text_element[len_sentences[0]:]
 
-                            len_sentences[0] -= len(text_element)
-                            text_element = None
+                        len_sentences = len_sentences[1:]
+                        new_segment = etree.SubElement(new_segments, '{{{0}}}segment'.format(nsmap['xliff']))
+                        new_source = etree.SubElement(new_segment, '{{{0}}}source'.format(nsmap['xliff']))
+                        etree.SubElement(new_segment, '{{{0}}}target'.format(nsmap['xliff']))
+                    else:
+                        if len(new_source) == 0:
+                            if new_source.text is None:
+                                new_source.text = ''
+                            new_source.text += text_element
+                        else:
+                            if new_source[-1].tail is None:
+                                new_source[-1].tail = ''
+                            new_source[-1].tail += text_element
 
-                    return len_sentences, new_segment, new_source
+                        len_sentences[0] -= len(text_element)
+                        text_element = None
 
-                source_text = source.text
-                if source_text is not None:
-                    source.text = None
-                    len_sentences, new_segment, new_source = create_segments(source_text,
+                return len_sentences, new_segment, new_source
+
+            source_text = source.text
+            if source_text is not None:
+                source.text = None
+                len_sentences, new_segment, new_source = create_segments(source_text,
+                                                                         len_sentences,
+                                                                         new_segment,
+                                                                         new_source)
+
+            for child in source:
+                child_tail = child.tail
+                new_source.append(child)
+                if child.tail is not None:
+                    child.tail = None
+                    len_sentences, new_segment, new_source = create_segments(child_tail,
                                                                              len_sentences,
                                                                              new_segment,
                                                                              new_source)
 
-                for child in source:
-                    child_tail = child.tail
-                    new_source.append(child)
-                    if child.tail is not None:
-                        child.tail = None
-                        len_sentences, new_segment, new_source = create_segments(child_tail,
-                                                                                 len_sentences,
-                                                                                 new_segment,
-                                                                                 new_source)
+            if len(new_source) == 1 and etree.QName(new_source[0]).localname == 'ec' and new_source.text is None:
+                new_child = new_source[0]
+                new_segment.getprevious().find('xliff:source', nsmap).append(new_child)
+                if new_child.tail:
+                    new_source.text = new_child.tail
+                else:
+                    new_segments.remove(new_segment)
 
+
+            segment_parent = segment.getparent()
+            segment_i = segment_parent.index(segment)
+            segment_parent.remove(segment)
+
+            for new_segment in new_segments:
+                segment_parent.insert(segment_i, new_segment)
+                segment_i += 1
+
+        def set_up_ignorable(segment, prev_or_next):
+            ignorable_sibling = segment.getprevious() if prev_or_next == 'prev' else segment.getnext()
+            if ignorable_sibling is None or etree.QName(ignorable_sibling).localname != 'ignorable':
                 segment_parent = segment.getparent()
-                segment_i = segment_parent.index(segment)
-                segment_parent.remove(segment)
+                ignorable_i = segment_parent.index(segment)
+                if prev_or_next == 'next':
+                    ignorable_i += 1
 
-                for new_segment in new_segments:
-                    segment_parent.insert(segment_i, new_segment)
-                    segment_i += 1
+                ignorable_sibling = etree.Element('{{{0}}}ignorable'.format(nsmap['xliff']))
+                etree.SubElement(ignorable_sibling, '{{{0}}}source'.format(nsmap['xliff']))
+                segment_parent.insert(ignorable_i, ignorable_sibling)
+
+            return ignorable_sibling
+
+        segment_counter = 1
+
+        for segment in source_file_reference.findall('.//xliff:segment', nsmap):
+
+            source = segment.find('xliff:source', nsmap)
+
+            prev_ignorable = None
+            prev_ignorable_complete = False
+
+            while not prev_ignorable_complete:
+                if source.text is not None:
+                    lstripped_source_text = source.text.lstrip()
+                    if lstripped_source_text != source.text:
+                        text_to_ignore = source.text[:-len(lstripped_source_text)]
+                        if lstripped_source_text != '':
+                            source.text = lstripped_source_text
+                            prev_ignorable_complete = True
+                        else:
+                            source.text = None
+                        if prev_ignorable is None:
+                            prev_ignorable = set_up_ignorable(segment, 'prev')
+                        if len(prev_ignorable[0]) > 0:
+                            if prev_ignorable[0][-1].tail is None:
+                                prev_ignorable[0][-1].tail = text_to_ignore
+                            else:
+                                prev_ignorable[0][-1].tail += text_to_ignore
+                        elif prev_ignorable[0].text is None:
+                            prev_ignorable[0].text = text_to_ignore
+                        else:
+                            prev_ignorable[0].text += text_to_ignore
+                    else:
+                        prev_ignorable_complete = True
+                elif len(source) == 1 and source[0].tail is None:
+                    if prev_ignorable is not None:
+                        prev_ignorable[0].append(source[0])
+                        segment.getparent().remove(segment)
+
+                    segment.tag = '{{{0}}}ignorable'.format(nsmap['xliff'])
+                    prev_ignorable_complete = True
+
+                elif len(source) > 0:
+                    first_child = source[0]
+                    first_child_localname = etree.QName(first_child).localname
+                    if first_child_localname == 'ec':
+                        pass
+                    elif first_child_localname == 'sc':
+                        ph_pairs = source.xpath('xliff:sc|xliff:ec', namespaces=nsmap)
+                        if (len(ph_pairs) == 1 or (len(ph_pairs) == 2
+                        and source[-1].tail is None and ph_pairs[1] == source[-1])):
+                            pass
+                        else:
+                            prev_ignorable_complete = True
+                    else:
+                        if '<tab' not in first_child.attrib.get('equiv', '') and '<br' not in first_child.attrib.get('equiv', ''):
+                            prev_ignorable_complete = True
+
+                    if not prev_ignorable_complete:
+                        if prev_ignorable is None:
+                            prev_ignorable = set_up_ignorable(segment, 'prev')
+                        source.text = first_child.tail
+                        first_child.tail = None
+                        prev_ignorable[0].append(first_child)
+                else:
+                    segment.getparent().remove(segment)
+                    prev_ignorable_complete = True
+
+            if etree.QName(segment).localname == 'ignorable':
+                continue
+
+            next_ignorable = None
+            next_ignorable_complete = False
+            while not next_ignorable_complete:
+                if len(source) > 0 and source[-1].tail is not None:
+                    last_child = source[-1]
+                    rstripped_last_child_tail = last_child.tail.rstrip()
+                    if rstripped_last_child_tail != last_child.tail:
+                        text_to_ignore = last_child.tail[len(rstripped_last_child_tail):]
+                        if rstripped_last_child_tail != '':
+                            last_child.tail = rstripped_last_child_tail
+                            next_ignorable_complete = True
+                        else:
+                            last_child.tail = None
+
+                        if next_ignorable is None:
+                            next_ignorable = set_up_ignorable(segment, 'next')
+
+                        if next_ignorable[0].text is None:
+                            next_ignorable[0].text = text_to_ignore
+                        else:
+                            next_ignorable[0].text = text_to_ignore + next_ignorable[0].text
+
+                    else:
+                        next_ignorable_complete = True
+                elif len(source) > 0:
+                    last_child = source[-1]
+                    last_child_localname = etree.QName(last_child).localname
+                    if last_child_localname == 'sc':
+                        pass
+                    elif last_child_localname == 'ec' and len(source.xpath('xliff:sc|xliff:ec', namespaces=nsmap)) == 1:
+                        pass
+                    elif last_child_localname == 'ph' and last_child.attrib.get('equiv', '').startswith('<br', '<tab'):
+                        pass
+                    else:
+                        next_ignorable_complete = True
+
+                    if not next_ignorable_complete:
+                        if next_ignorable is None:
+                            next_ignorable = set_up_ignorable(segment, 'next')
+                        next_ignorable[0].insert(0, last_child)
+                        last_child.tail = next_ignorable[0].text
+                        next_ignorable[0].text = None
+                elif source.text is not None:
+                    rstripped_source_text = source.text.rstrip()
+                    if rstripped_source_text != source.text:
+                        text_to_ignore = source.text[len(rstripped_source_text):]
+                        if rstripped_source_text != '':
+                            source.text = rstripped_source_text
+                            next_ignorable_complete = True
+                        else:
+                            source.text = None
+
+                        if next_ignorable is None:
+                            next_ignorable = set_up_ignorable(segment, 'next')
+
+                        if next_ignorable[0].text is None:
+                            next_ignorable[0].text = text_to_ignore
+                        else:
+                            next_ignorable[0].text = text_to_ignore + next_ignorable[0].text
+
+                    else:
+                        next_ignorable_complete = True
+                else:
+                    segment.getparent().remove(segment)
+                    prev_ignorable_complete = True
+
+            for sc_child in source.findall('xliff:sc', nsmap):
+                next_sibling = sc_child.getnext()
+                if (sc_child.tail is None and next_sibling is not None
+                and etree.QName(next_sibling).localname == 'ec'
+                and sc_child.attrib['id'] == next_sibling.attrib['id']):
+                    source.remove(sc_child)
+                    if next_sibling.tail is not None:
+                        target_child = next_sibling.getprevious()
+                        if target_child is not None:
+                            if target_child.tail is None:
+                                target_child.tail = next_sibling.tail
+                            else:
+                                target_child.tail += next_sibling.tail
+                        else:
+                            if source.text is None:
+                                source.text = next_sibling.tail
+                            else:
+                                source.text += next_sibling.tail
+                    source.remove(next_sibling)
+
+            segment.attrib['id'] = str(segment_counter)
+            segment_counter += 1
 
         kxliff = BytesIO(etree.tostring(xml_root, encoding='UTF-8'))
         kxliff.name = name + '.kxliff'
