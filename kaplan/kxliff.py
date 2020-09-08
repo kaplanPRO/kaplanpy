@@ -776,6 +776,8 @@ class KXLIFF:
 
         target_segment = etree.fromstring(target_segment)
 
+        assert etree.QName(target_segment).localname == 'target'
+
         if self.xliff_version < 2.0:
             active_g_tags = []
             for any_child in target_segment:
@@ -850,11 +852,15 @@ class KXLIFF:
         translation_unit = self.translation_units.find('translation-unit[@id="{0}"]'.format(tu_no))
 
         if segment_no is not None:
-            segment = translation_unit.find('segment[@id="{0}"]'.format(segment_no))
+            segment = translation_unit.find('segment[@id="{0}"]'.format(segment_no), self.nsmap)
         else:
-            segment = translation_unit.findall('segment')[0]
+            segment = translation_unit.findall('segment', self.nsmap)[0]
 
-        segment[1] = target_segment
+        target = segment.find('target', self.nsmap)
+        if target is None:
+            segment.append(target_segment)
+        else:
+            segment[segment.index(target)] = target_segment
 
         if self.xliff_version >= 2.0:
             _translation_unit = self.xml_root.find('.//unit[@id="{0}"]'.format(tu_no), self.nsmap)
@@ -864,7 +870,11 @@ class KXLIFF:
             else:
                 _segment = _translation_unit.findall('segment', self.nsmap)[0]
 
-            _segment[_segment.index(_segment.find('target', self.nsmap))] = _target_segment
+            _target = _segment.find('target', self.nsmap)
+            if target is None:
+                _segment.append(_target_segment)
+            else:
+                _segment[_segment.index(_target)] = _target_segment
 
         else:
             _translation_unit = self.xml_root.find('.//trans-unit[@id="{0}"]'.format(tu_no), self.nsmap)
