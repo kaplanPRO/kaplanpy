@@ -461,8 +461,6 @@ class KXLIFF:
                 elif paragraph_child.tag.endswith('}drawing'):
                     add_placeholder(tu, source_xml, paragraph_child, 'ph', True, True)
 
-
-            _internal_files = []
             with zipfile.ZipFile(source_file) as source_zip:
                 source_file_content = etree.parse(source_zip.open('word/document.xml')).getroot()
 
@@ -470,9 +468,6 @@ class KXLIFF:
             internal_file = etree.Element('{{{0}}}internal-file'.format(nsmap['kaplan']), {'rel': 'word/document.xml'})
             internal_file.append(source_file_content)
             source_file_reference.insert(0, internal_file)
-
-            list_of_placeholders = []
-            list_of_tags = []
 
             for paragraph_element in source_file_content.xpath('w:body/w:p|w:body/w:tbl/w:tr/w:tc//w:p', namespaces=source_nsmap):
                 if paragraph_element.find('.//w:t', source_nsmap) is None:
