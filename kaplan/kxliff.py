@@ -902,7 +902,7 @@ class KXLIFF:
                         next_ignorable_complete = True
                 else:
                     segment.getparent().remove(segment)
-                    prev_ignorable_complete = True
+                    next_ignorable_complete = True
 
             for sc_child in source.findall('xliff:sc', nsmap):
                 next_sibling = sc_child.getnext()
