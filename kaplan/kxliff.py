@@ -782,11 +782,12 @@ class KXLIFF:
                 if source.text is not None:
                     lstripped_source_text = source.text.lstrip()
                     if lstripped_source_text != source.text:
-                        text_to_ignore = source.text[:-len(lstripped_source_text)]
                         if lstripped_source_text != '':
+                            text_to_ignore = source.text[:-len(lstripped_source_text)]
                             source.text = lstripped_source_text
                             prev_ignorable_complete = True
                         else:
+                            text_to_ignore = source.text
                             source.text = None
                         if prev_ignorable is None:
                             prev_ignorable = set_up_ignorable(segment, 'prev')
@@ -835,21 +836,23 @@ class KXLIFF:
                     segment.getparent().remove(segment)
                     prev_ignorable_complete = True
 
-            if etree.QName(segment).localname == 'ignorable':
+            if etree.QName(segment).localname == 'ignorable' or segment.getparent() is None:
                 continue
 
             next_ignorable = None
             next_ignorable_complete = False
+
             while not next_ignorable_complete:
                 if len(source) > 0 and source[-1].tail is not None:
                     last_child = source[-1]
                     rstripped_last_child_tail = last_child.tail.rstrip()
                     if rstripped_last_child_tail != last_child.tail:
-                        text_to_ignore = last_child.tail[len(rstripped_last_child_tail):]
                         if rstripped_last_child_tail != '':
+                            text_to_ignore = last_child.tail[len(rstripped_last_child_tail):]
                             last_child.tail = rstripped_last_child_tail
                             next_ignorable_complete = True
                         else:
+                            text_to_ignore = last_child.tail
                             last_child.tail = None
 
                         if next_ignorable is None:
@@ -883,11 +886,12 @@ class KXLIFF:
                 elif source.text is not None:
                     rstripped_source_text = source.text.rstrip()
                     if rstripped_source_text != source.text:
-                        text_to_ignore = source.text[len(rstripped_source_text):]
                         if rstripped_source_text != '':
+                            text_to_ignore = source.text[len(rstripped_source_text):]
                             source.text = rstripped_source_text
                             next_ignorable_complete = True
                         else:
+                            text_to_ignore = source.text
                             source.text = None
 
                         if next_ignorable is None:
