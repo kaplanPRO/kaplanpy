@@ -1026,6 +1026,11 @@ class KXLIFF:
                     if len(active_g_tags) > 0:
                         active_g_tags[0].append(any_child)
 
+        else:
+            target_segment.tag = '{{{0}}}target'.format(self.nsmap[None])
+            for child in target_segment:
+                child.tag = '{{{0}}}{1}'.format(self.nsmap[None], etree.QName(child).localname)
+
         _target_segment = deepcopy(target_segment)
 
         translation_unit = self.translation_units.find('translation-unit[@id="{0}"]'.format(tu_no))
@@ -1036,6 +1041,8 @@ class KXLIFF:
             segment = translation_unit.findall('segment', self.nsmap)[0]
 
         target = segment.find('target', self.nsmap)
+        if target is None:
+            target = segment.find('target')
         if target is None:
             segment.append(target_segment)
         else:
@@ -1050,7 +1057,9 @@ class KXLIFF:
                 _segment = _translation_unit.findall('segment', self.nsmap)[0]
 
             _target = _segment.find('target', self.nsmap)
-            if target is None:
+            if _target is None:
+                _target = _segment.find('target')
+            if _target is None:
                 _segment.append(_target_segment)
             else:
                 _segment[_segment.index(_target)] = _target_segment
