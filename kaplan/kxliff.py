@@ -1328,6 +1328,8 @@ class KXLIFF:
             else:
                 _segment = _translation_unit.findall('segment', self.nsmap)[0]
 
+            _segment.attrib['state'] = segment_state
+
             _target = _segment.find('target', self.nsmap)
             if _target is None:
                 _target = _segment.find('target')
@@ -1338,6 +1340,7 @@ class KXLIFF:
 
         else:
             _translation_unit = self.xml_root.find('.//trans-unit[@id="{0}"]'.format(tu_no), self.nsmap)
+            _target_segment.attrib['state'] = segment_state
 
             if segment_no is not None:
                 _segment = _translation_unit.find('target//mrk[@mid="{0}"]'.format(segment_no), self.nsmap)
