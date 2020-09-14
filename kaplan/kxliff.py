@@ -59,7 +59,7 @@ class KXLIFF:
                         _translation_unit.remove(_child)
                 for _any_child in _translation_unit.findall('.//'):
                     if 'equiv' in _any_child.attrib:
-                        _any_child.text = _any_child.attrib['equiv']
+                        _any_child.text = html.unescape(_any_child.attrib['equiv'])
 
                 self.translation_units.append(_translation_unit)
         else:
@@ -529,7 +529,7 @@ class KXLIFF:
                     else:
                         equiv = '<{0}{1}>'.format(data.tag.split('}')[-1], '/' if standalone else '')
 
-                    _tag.attrib['equiv'] = equiv
+                    _tag.attrib['equiv'] = html.escape(equiv)
 
                     return _tag_id
 
@@ -537,7 +537,7 @@ class KXLIFF:
                     tag = '{{{0}}}{1}'.format(nsmap['xliff'], tag)
 
                     _tag = etree.SubElement(source_xml, tag, {'id': starting_tag_i})
-                    _tag.attrib['equiv'] = '</{0}-{1}>'.format(equiv, starting_tag_i)
+                    _tag.attrib['equiv'] = html.escape('</{0}-{1}>'.format(equiv, starting_tag_i))
 
                 if paragraph_child.tag.endswith('}r'):
                     run_properties = paragraph_child.find('w:rPr', source_nsmap)
@@ -697,7 +697,7 @@ class KXLIFF:
                         else:
                             equiv = '<{0}{1}>'.format(data.tag.split('}')[-1], '/' if standalone else '')
 
-                    _tag.attrib['equiv'] = equiv
+                    _tag.attrib['equiv'] = html.escape(equiv)
 
                     return _tag_id, _data_id
 
@@ -706,7 +706,7 @@ class KXLIFF:
 
                     tag_attrib = {'id': starting_tag_i,
                                   'dataRef': data_id,
-                                  'equiv': equiv}
+                                  'equiv': html.escape(equiv)}
                     tag = etree.SubElement(source_xml, tag, tag_attrib)
 
                 if current_element.text is not None:
@@ -1095,7 +1095,7 @@ class KXLIFF:
                         else:
                             prev_ignorable_complete = True
                     else:
-                        if '<tab' not in first_child.attrib.get('equiv', '') and '<br' not in first_child.attrib.get('equiv', ''):
+                        if '&lt;tab' not in first_child.attrib.get('equiv', '') and '&lt;br' not in first_child.attrib.get('equiv', ''):
                             prev_ignorable_complete = True
 
                     if not prev_ignorable_complete:
@@ -1144,7 +1144,7 @@ class KXLIFF:
                         pass
                     elif last_child_localname == 'ec' and len(source.xpath('xliff:sc|xliff:ec', namespaces=nsmap)) == 1:
                         pass
-                    elif last_child_localname == 'ph' and last_child.attrib.get('equiv', '').startswith('<br', '<tab'):
+                    elif last_child_localname == 'ph' and last_child.attrib.get('equiv', '').startswith(('&lt;br', '&lt;tab')):
                         pass
                     else:
                         next_ignorable_complete = True
