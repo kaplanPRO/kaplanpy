@@ -124,7 +124,7 @@ class KXLIFF:
 
                 self.translation_units.append(_translation_unit)
 
-    def generate_target_translations(self, output_directory, path_to_source_file=None):
+    def generate_target_translation(self, output_directory, path_to_source_file=None):
         '''
         Generates a "clean" target file.
 
