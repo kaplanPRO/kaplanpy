@@ -137,7 +137,7 @@ class KXLIFF:
             raise TypeError('Function only available for .kxliff files.')
 
         source_file = self.xml_root.find('file', self.nsmap)
-        source_filename = source_file.attrib['original']
+        source_filename = os.path.basename(source_file.attrib['original'])
 
         if source_filename.lower().endswith('.docx'):
             source_nsmap = source_file[0][0].nsmap
