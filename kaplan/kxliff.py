@@ -154,7 +154,7 @@ class KXLIFF:
 
                 for segment in trans_unit.xpath('.//xliff:segment|.//xliff:ignorable', namespaces={'xliff':self.nsmap[None]}):
                     target = segment.find('target', self.nsmap)
-                    if target.text is None and len(target) == 0:
+                    if target is None or (target.text is None and len(target) == 0):
                         target = segment.find('source', self.nsmap)
 
                     if target.text is not None:
