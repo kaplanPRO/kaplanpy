@@ -1246,11 +1246,10 @@ class KXLIFF:
             if 'dataref' in any_child.attrib:
                 any_child_attrib = any_child.attrib
                 data_ref = any_child.attrib['dataref']
-                any_child.attrib.clear()
-                del(any_child_attrib['dataref'])
-                any_child_attrib['dataRef'] = data_ref
-                for key, value in any_child_attrib:
-                    any_child.attrib[key] = value
+                any_child.attrib.pop('dataref')
+                any_child.attrib['dataRef'] = data_ref
+
+            any_child.attrib.pop('contenteditable', None)
 
         if self.xliff_version < 2.0:
             active_g_tags = []
