@@ -611,7 +611,7 @@ class KXLIFF:
             internal_file.append(source_file_content)
             source_file_reference.insert(0, internal_file)
 
-            for paragraph_element in source_file_content.xpath('w:body/w:p|w:body/w:tbl/w:tr/w:tc//w:p', namespaces=source_nsmap):
+            for paragraph_element in source_file_content.xpath('w:body/w:p|w:body/w:tbl/w:tr/w:tc//w:p', namespaces={'w':source_nsmap['w']}):
                 if paragraph_element.find('.//w:t', source_nsmap) is None:
                     continue
                 placeholder_placed = False
