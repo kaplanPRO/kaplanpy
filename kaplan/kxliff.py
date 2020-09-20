@@ -1358,6 +1358,8 @@ class KXLIFF:
             if segment_no is not None:
                 _segment = _translation_unit.find('target//mrk[@mid="{0}"]'.format(segment_no), self.nsmap)
                 _target_segment.tag = '{{{0}}}mrk'.format(self.nsmap[None])
+                _target_segment.attrib['mtype'] = 'seg'
+                _target_segment.attrib['mid'] = str(segment_no)
             else:
                 _segment = _translation_unit.find('target', self.nsmap)
                 _target_segment.tag = '{{{0}}}target'.format(self.nsmap[None])
