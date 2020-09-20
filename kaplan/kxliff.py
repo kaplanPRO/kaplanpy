@@ -1242,6 +1242,16 @@ class KXLIFF:
 
         assert etree.QName(target_segment).localname == 'target'
 
+        for any_child in target_segment.findall('.//'):
+            if 'dataref' in any_child.attrib:
+                any_child_attrib = any_child.attrib
+                data_ref = any_child.attrib['dataref']
+                any_child.attrib.clear()
+                del(any_child_attrib['dataref'])
+                any_child_attrib['dataRef'] = data_ref
+                for key, value in any_child_attrib:
+                    any_child.attrib[key] = value
+
         if self.xliff_version < 2.0:
             active_g_tags = []
             for any_child in target_segment:
