@@ -1322,8 +1322,12 @@ class KXLIFF:
 
         if segment_no is not None:
             segment = translation_unit.find('segment[@id="{0}"]'.format(segment_no), self.nsmap)
+            if segment is None:
+                segment = translation_unit.find('segment[@id="{0}"]'.format(segment_no))
         else:
             segment = translation_unit.findall('segment', self.nsmap)[0]
+            if segment is None:
+                segment = translation_unit.findall('segment')[0]
 
         target = segment.find('target', self.nsmap)
         if target is None:
