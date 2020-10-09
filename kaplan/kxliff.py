@@ -28,15 +28,17 @@ class KXLIFF:
     Class KXLIFF offers native support for .xliff and .sdlxliff files.
 
     Args:
-        args[0]: Either the path to a kxliff file or a kxliff file as a BytesIO instance.
+        bilingual_file: Either the path to a bilingual file or a bilingual file as a BytesIO instance.
+        src (optional): ISO 639-1 code for the source language.
+        trgt (optional): ISO 639-1 code for the target language.
     '''
 
-    def __init__(self, *args):
-        self.name = os.path.basename(args[0]) if type(args[0]) == str else args[0].name
+    def __init__(self, bilingual_file, src=None, trgt=None):
+        self.name = os.path.basename(bilingual_file) if type(bilingual_file) == str else bilingual_file.name
         self.nsmap = {}
         self.translation_units = etree.Element('translation-units')
         self.xliff_variant = ''
-        self.xml_root = etree.parse(args[0]).getroot()
+        self.xml_root = etree.parse(bilingual_file).getroot()
 
         self.xliff_version = float(self.xml_root.attrib['version'])
         self.nsmap = self.xml_root.nsmap
@@ -473,13 +475,14 @@ class KXLIFF:
             raise ValueError('Filetype incompatible for this task!')
 
     @classmethod
-    def new(cls, source_file, source_language):
+    def new(cls, source_file, src, trgt):
         '''
         Takes in a source file and returns a KXLIFF instance.
 
         Args:
             source_file: Path to a source file.
-            source_language: ISO 639-1 code of the source language.
+            src: ISO 639-1 code for the source language.
+            trgt: ISO 639-1 code for the target language.
         '''
 
         name = os.path.basename(source_file)
@@ -491,8 +494,11 @@ class KXLIFF:
         _tu_counter = 1
 
         xml_root = etree.Element('{{{0}}}xliff'.format(nsmap['xliff']),
+                                 attrib={'version':'2.1',
+                                         'srcLang': src,
+                                         'trgLang': trgt},
                                  nsmap={None:nsmap['xliff'], 'kaplan':nsmap['kaplan']})
-        xml_root.attrib['version'] = '2.1'
+
         source_file_reference = etree.SubElement(xml_root, '{{{0}}}file'.format(nsmap['xliff']))
         source_file_reference.attrib['id'] = '1'
         source_file_reference.attrib['original'] = source_file
@@ -1242,12 +1248,9 @@ class KXLIFF:
 
         assert etree.QName(target_segment).localname == 'target'
 
-        for any_child in target_segment.findall('.//'):
+        for any_child in target_segment:
             if 'dataref' in any_child.attrib:
-                any_child_attrib = any_child.attrib
-                data_ref = any_child.attrib['dataref']
-                any_child.attrib.pop('dataref')
-                any_child.attrib['dataRef'] = data_ref
+                any_child.attrib['dataRef'] = any_child.attrib.pop('dataref')
 
             any_child.attrib.pop('contenteditable', None)
 
