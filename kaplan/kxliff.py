@@ -1359,6 +1359,9 @@ class KXLIFF:
 
             _segment.attrib['state'] = segment_state
 
+            for any_child in _target_segment:
+                any_child.text = None
+
             _target = _segment.find('target', self.nsmap)
             if _target is None:
                 _target = _segment.find('target')
