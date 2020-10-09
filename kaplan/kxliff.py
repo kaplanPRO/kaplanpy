@@ -23,7 +23,7 @@ nsmap = {
 
 class KXLIFF:
     '''
-    A slightly modified version of the XML Localisation File Format (http://docs.oasis-open.org/xliff/v1.2/os/xliff-core.html).
+    A slightly modified version of the XML Localisation File Format (http://docs.oasis-open.org/xliff/xliff-core/v2.1/xliff-core-v2.1.html).
 
     Class KXLIFF offers native support for .xliff and .sdlxliff files.
 
