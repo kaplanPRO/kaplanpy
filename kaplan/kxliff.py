@@ -1,16 +1,15 @@
 # Installed libraries
 from lxml import etree
-import random
 import regex
-import string
-import zipfile
 
 # Standard Python libraries
 from copy import deepcopy
 import html
 from io import BytesIO
 import os
-from zipfile import ZipFile
+import random
+import string
+import zipfile
 
 # Internal Python files
 from .utils import get_current_time_in_utc, remove_dir

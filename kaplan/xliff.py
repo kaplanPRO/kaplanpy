@@ -1,9 +1,6 @@
 # Installed libraries
 from lxml import etree
-import random
 import regex
-import string
-import zipfile
 
 # Standard Python libraries
 from copy import deepcopy
@@ -11,7 +8,6 @@ import difflib
 import html
 from io import BytesIO
 import os
-from zipfile import ZipFile
 
 nsmap = {
     'kaplan': 'https://kaplan.pro',
