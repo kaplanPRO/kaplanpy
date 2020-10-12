@@ -8,8 +8,8 @@ with open('README.md', 'r') as input_file:
 setuptools.setup(
     name='kaplan',
     version=__version__,
-    author='Çağatay Onur Şengör',
-    author_email='contact@csengor.com',
+    author='Kaplan',
+    author_email='contact@kaplan.pro',
     description='A computer-assisted translation tool package',
     keywords = ['CAT', 'computer-assisted translation', 'computer-aided translation', 'translation', 'free-to-use'],
     long_description=long_description,
