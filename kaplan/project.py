@@ -47,21 +47,21 @@ class Project:
                 if include_source_and_tm:
                     source = self.files[i].get('source')
                     if source:
-                        file_dict['source'] = os.path.join(self.source_language,
-                                                           os.path.basename(source))
+                        file_dict['source'] = '/'.join((self.source_language,
+                                                           os.path.basename(source)))
                         project_package.write(source,
                                               file_dict['source'])
 
                     originalBF = self.files[i]['originalBF']
-                    file_dict['originalBF'] = os.path.join(self.source_language,
-                                                           os.path.basename(originalBF))
+                    file_dict['originalBF'] = '/'.join((self.source_language,
+                                                       os.path.basename(originalBF)))
 
                     project_package.write(originalBF,
                                           file_dict['originalBF'])
 
                 targetBF = self.files[i]['targetBF']
-                file_dict['targetBF'] = os.path.join(self.target_language,
-                                                     os.path.basename(targetBF))
+                file_dict['targetBF'] = '/'.join((self.target_language,
+                                                 os.path.basename(targetBF)))
 
                 project_package.write(targetBF,
                                       file_dict['targetBF'])
@@ -71,8 +71,9 @@ class Project:
             if len(self.translation_memories) > 0 and include_source_and_tm:
                 manifest['tms'] = {}
                 for i in range(len(self.translation_memories)):
-                    manifest['tms'][i] = os.path.join('TM',
-                                                      os.path.basename(self.translation_memories[i]))
+                    manifest['tms'][i] = '/'.join(('TM',
+                                                  os.path.basename(self.translation_memories[i])))
+
                     project_package.write(self.translation_memories[i],
                                           manifest['tms'][i])
 
