@@ -90,9 +90,10 @@ class Project:
                     project_package.extract(manifest['files'][i][key],
                                             project_directory)
 
-            for i in manifest['tms']:
-                project_package.extract(manifest['tms'][i],
-                                        project_directory)
+            if 'tms' in manifest:
+                for i in manifest['tms']:
+                    project_package.extract(manifest['tms'][i],
+                                            project_directory)
 
         return manifest
 
