@@ -473,6 +473,66 @@ class KXLIFF:
         else:
             raise ValueError('Filetype incompatible for this task!')
 
+    def merge_segments(self, list_of_segments):
+        '''
+        Merges two segments of the same translation unit.
+
+        Args:
+            list_of_segments: List containing segment IDs.
+        '''
+
+        assert self.xliff_variant == 'kaplan', 'This function is available for .kxliff files only.'
+
+        def transfer_children(source_parent, target_parent):
+            if source_parent.text is not None:
+                if len(target_parent) == 0:
+                    if target_parent.text is None:
+                        target_parent.text = source_parent.text
+                    else:
+                        target_parent.text += source_parent.text
+                else:
+                    if target_parent[-1].tail is None:
+                        target_parent[-1].tail = source_parent.text
+                    else:
+                        target_parent[-1].tail += source_parent.text
+            for child in source_parent:
+                target_parent.append(deepcopy(child))
+
+        translation_unit = None
+        segments = []
+        segment_ids = []
+        for segment_id in list_of_segments:
+            segment = self.xml_root.xpath('.//xliff:segment[@id="{0}"]'.format(str(segment_id)), namespaces=nsmap)[0]
+
+            if translation_unit is None:
+                translation_unit = segment.getparent()
+            else:
+                assert translation_unit == segment.getparent(), 'Segments are not of the same translation unit.'
+
+            segments.append(segment)
+            segment_ids.append(translation_unit.index(segment))
+
+        for segment in translation_unit[min(segment_ids):max(segment_ids)+1]:
+            if etree.QName(segment).localname == 'segment' and segment not in segments:
+                raise ValueError('Segments are not consecutive.')
+
+        segments = translation_unit[min(segment_ids):max(segment_ids)+1]
+        first_source = segments[0][0]
+        first_target = segments[0][1]
+
+        for segment in segments[1:]:
+            segment_source = segment[0]
+            transfer_children(segment_source, first_source)
+
+            if etree.QName(segment).localname == 'segment':
+                segment_target = segment[1]
+            else:
+                segment_target = segment[0]
+
+            transfer_children(segment_target, first_target)
+
+            translation_unit.remove(segment)
+
     @classmethod
     def new(cls, source_file, src, trgt):
         '''
