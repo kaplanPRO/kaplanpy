@@ -1,3 +1,4 @@
+# DEPRECIATED
 import os, regex
 
 from lxml import etree

@@ -1,3 +1,4 @@
+# DEPRECIATED
 import difflib
 import os
 

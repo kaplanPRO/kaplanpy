@@ -6,7 +6,9 @@ from lxml import etree
 
 from .language_codes import language_codes
 
-nsmap = {'kaplan': 'https://kaplan.pro'}
+nsmap = {
+    'kaplan': 'https://kaplan.pro'
+}
 
 supported_file_formats = ('.docx', '.odp', '.ods', '.odt', '.txt', '.xliff', '.po')
 
@@ -153,15 +155,17 @@ def analyse_files(file_path_or_paths, tm_paths=[], source_language=None, target_
 
     return report
 
-def file_clean_up(directory_path):
-    '''Removes all files inside the given directory path.'''
+def remove_dir(path_to_dir):
+    '''Removes a non-empty dir.'''
 
     import os
 
-    for root, dirs, files in os.walk(directory_path, topdown=False):
+    for root, dirs, files in os.walk(path_to_dir, topdown=False):
         for target_file in files:
             os.remove(os.path.join(root, target_file))
         os.rmdir(root)
+
+file_clean_up = remove_dir
 
 def create_new_project_package(project_metadata, list_or_tuple_of_files, output_directory):
     '''Creates a package containing selected project files.

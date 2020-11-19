@@ -1,3 +1,4 @@
+# DEPRECIATED
 from lxml import etree
 
 from .utils import nsmap
