@@ -1,4 +1,4 @@
-# DEPCERIATED
+# DEPRECIATED
 from hashlib import sha256
 import os, random, string, zipfile
 
