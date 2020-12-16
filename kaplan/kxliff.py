@@ -125,18 +125,6 @@ class KXLIFF:
 
                 self.translation_units.append(_translation_unit)
 
-    @staticmethod
-    def can_process(source_file):
-        '''
-        Static method that determines whether the source_file is compatible.
-
-        Args:
-            source_file: Path to a source file.
-        '''
-        if source_file.lower().endswith(('.docx', '.kxliff', '.odp', '.ods', '.odt', '.po', '.sdlxliff', '.txt', '.xliff')):
-            return True
-        else:
-            return False
 
     def generate_target_translation(self, output_directory, path_to_source_file=None):
         '''
