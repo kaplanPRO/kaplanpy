@@ -11,3 +11,18 @@ def can_process(input_file):
         return True
     else:
         return False
+
+def open_bilingualfile(bilingualfile):
+    try:
+        from .kxliff import KXLIFF
+        return KXLIFF.open_bilingualfile(bilingualfile)
+    except:
+        try:
+            from .sdlxliff import SDLXLIFF
+            return SDLXLIFF.open_bilingualfile(bilingualfile)
+        except:
+            try:
+                from .xliff import XLIFF
+                return XLIFF.open_bilingualfile(bilingualfile)
+            except:
+                raise TypeError('File not compatible.')

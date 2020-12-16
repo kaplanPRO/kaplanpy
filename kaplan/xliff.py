@@ -8,201 +8,278 @@ import difflib
 import html
 from io import BytesIO
 import os
+import pathlib
 
 nsmap = {
-    'kaplan': 'https://kaplan.pro',
     'xliff': 'urn:oasis:names:tc:xliff:document:2.1',
     'xml': 'http://www.w3.org/XML/1998/namespace'
 }
 
 class XLIFF:
     '''
-    XML Localisation File (http://docs.oasis-open.org/xliff/xliff-core/v2.1/xliff-core-v2.1.html)
+    XML Localisation File
 
     Args:
-        tm: Either the path to a KTM file or a KTM file as a BytesIO instance.
-        src (optional): ISO 639-1 code for the source language.
-        trgt (optional): ISO 639-1 code for the target language.
+        name: Name of the file
+        xml_root: The xml root of the file
     '''
-    def __init__(self, path_or_xliff_file, src=None, trgt=None):
-        self.name = os.path.basename(path_or_xliff_file) if type(path_or_xliff_file) == str else path_or_xliff_file.name
-        self.xml_root = etree.parse(path_or_xliff_file).getroot()
+    def __init__(self, name, xml_root):
+        self.name = name
+        self.xml_root = xml_root
 
-        if self.xml_root.nsmap[None] != nsmap['xliff']:
-            raise TypeError('This class can only parse XLIFF v2.1')
+        self.xliff_version = float(self.xml_root.attrib['version'])
+        self.nsmap = self.xml_root.nsmap
 
-    def lookup_segment(self, source_segment, diff=0.5):
-        source_segment = etree.fromstring(source_segment)
-        ids = {}
-        for any_child in source_segment:
-            any_child.tag = etree.QName(any_child).localname
-            if any_child.attrib.get('id', None):
-                copy_child = deepcopy(any_child)
-                copy_child.tail = None
-                ids['<' + '-'.join((copy_child.tag, copy_child.attrib['id'])) + '>'] = etree.tostring(copy_child, encoding='UTF-8')
+        self.translation_units = etree.Element('translation-units')
 
-        source_string, _ = self.prepare_segment(source_segment)
+        if self.xliff_version >= 2.0:
+            for translation_unit in self.xml_root.findall('.//unit', self.nsmap):
+                _translation_unit = deepcopy(translation_unit)
+                _translation_unit.tag = 'translation-unit'
+                for _child in _translation_unit:
+                    if not _child.tag.endswith(('}segment', '}ignorable')):
+                        _translation_unit.remove(_child)
+                for _any_child in _translation_unit.findall('.//'):
+                    if 'equiv' in _any_child.attrib:
+                        _any_child.text = html.unescape(_any_child.attrib['equiv'])
 
-        sm = difflib.SequenceMatcher()
-        sm.set_seq1(source_string)
+                self.translation_units.append(_translation_unit)
+        else:
+            for translation_unit in self.xml_root.findall('.//trans-unit', self.nsmap):
+                segments = []
+                _g_counter = {}
+                _translation_unit = etree.Element('translation-unit', translation_unit.attrib)
+                if translation_unit.find('seg-source', self.nsmap) is not None:
+                    for source_segment in translation_unit.findall('seg-source//mrk', self.nsmap):
+                        target_segment = translation_unit.find('target//mrk[@mid="{0}"]'.format(source_segment.attrib['mid']), self.nsmap)
 
-        tm_hits = []
+                        segments.append([source_segment, target_segment])
 
-        for source_entry in self.xml_root.xpath('.//xliff:source', namespaces=nsmap):
-            sm.set_seq2(source_entry.text)
-            if sm.ratio() > diff:
-                segment = etree.Element('segment')
-                source_hit = source_entry.text
-                source = etree.SubElement(segment, 'source')
-                for text, tag in regex.findall('([^<>]+)?(<[^<>\s]+>)?', source_hit):
-                    if text != '':
-                        text = html.unescape(text)
-                        if len(source) == 0:
-                            if source.text is not None:
-                                source.text += text
+                else:
+                    segments.append([translation_unit.find('source', self.nsmap), translation_unit.find('target', self.nsmap)])
+
+                for segment in segments:
+                    _segment = etree.SubElement(_translation_unit, 'segment', {'id': segment[0].attrib.get('mid', 'N/A')})
+
+                    _source = deepcopy(segment[0])
+                    _source.tag = 'source'
+                    _source.tail = None
+
+                    if segment[1] is not None:
+                        _target = deepcopy(segment[1])
+                    else:
+                        _target = etree.Element('mrk', _source.attrib)
+                    _target.tag = 'target'
+                    _target.tail = None
+
+                    _segment.append(_source)
+                    _segment.append(_target)
+
+                    for _child in _segment:
+                        for _any_child in _child.findall('.//'):
+
+                            if _any_child.tag.startswith('b'):
+                                _any_child.text = '<{0}-{1}>'.format(etree.QName(_any_child).localname[1:], _any_child.attrib.get('id', 'N/A'))
+                            elif _any_child.tag.startswith('e'):
+                                _any_child.text = '</{0}-{1}>'.format(etree.QName(_any_child).localname[1:], _any_child.attrib.get('id', 'N/A'))
+                            elif _any_child.tag.endswith('g'):
+                                if _any_child.attrib['id'] not in _g_counter:
+                                    _g_counter[_any_child.attrib['id']] = str(len(_g_counter) + 1)
+                                _b_g_tag = etree.Element('g', _any_child.attrib)
+                                _b_g_tag.attrib['no'] = _g_counter[_any_child.attrib['id']]
+                                _e_g_tag = deepcopy(_b_g_tag)
+
+                                _b_g_tag.text = '<g-{0}>'.format(_g_counter[_any_child.attrib['id']])
+                                _e_g_tag.text = '</g-{0}>'.format(_g_counter[_any_child.attrib['id']])
+
+                                _parent = _any_child.getparent()
+                                _parent.replace(_any_child, _b_g_tag)
+                                _b_g_tag.tail = _any_child.text
+                                next_i = _parent.index(_b_g_tag) + 1
+                                for _g_child in _any_child:
+                                    _parent.insert(next_i, _g_child)
+                                    next_i += 1
+                                _parent.insert(next_i, _e_g_tag)
+                                _e_g_tag.tail = _any_child.tail
                             else:
-                                source.text = text
-                        else:
-                            if source[-1].tail is not None:
-                                source[-1].tail += text
-                            else:
-                                source[-1].tail = text
-                    if tag != '':
-                        if tag not in ids:
-                            continue
-                        tag = etree.fromstring(ids[tag])
-                        source.append(tag)
+                                _any_child.text = '<{0}-{1}/>'.format(etree.QName(_any_child).localname, _any_child.attrib.get('id', 'N/A'))
 
-                target_hit = source_entry.getparent()[1].text
-                target = etree.SubElement(segment, 'target')
-                for text, tag in regex.findall('([^<>]+)?(<[^<>\s]+>)?', target_hit):
-                    if text != '':
-                        text = html.unescape(text)
-                        if len(target) == 0:
-                            if target.text is not None:
-                                target.text += text
-                            else:
-                                target.text = text
-                        else:
-                            if target[-1].tail is not None:
-                                target[-1].tail += text
-                            else:
-                                target[-1].tail = text
-                    if tag != '':
-                        if tag not in ids:
-                            continue
-                        tag = etree.fromstring(ids[tag])
-                        target.append(tag)
+                self.translation_units.append(_translation_unit)
 
-                tm_hits.append((sm.ratio(), segment))
-
-        tm_hits.sort(reverse=True)
-
-        return tm_hits
+    def merge_segments(self, *args):
+        raise TypeError('This function is available for the kxliff.KXLIFF class only.')
 
     @classmethod
-    def new(cls, name, src, trgt):
-        '''
-            name: File name for the KTM file.
-            src: ISO 639-1 code for the source language.
-            trgt: ISO 639-1 code for the target language.
-        '''
+    def open_bilingualfile(cls, bilingualfile):
+        xml_root = etree.parse(bilingualfile).getroot()
+        if isinstance(bilingualfile, BytesIO):
+            name = bilingualfile.name
+        else:
+            name = pathlib.Path(bilingualfile).name
 
-
-        xml_root = etree.Element('{{{0}}}xliff'.format(nsmap['xliff']),
-                                 attrib={'version': '2.1',
-                                         'srcLang': src,
-                                         'trgLang': trgt},
-                                 nsmap={None:nsmap['xliff'], 'kaplan':nsmap['kaplan']})
-
-        etree.SubElement(xml_root,
-                         '{{{0}}}file'.format(nsmap['xliff']),
-                         attrib={'id':'1'})
-
-        xliff = BytesIO(etree.tostring(xml_root, encoding='UTF-8'))
-
-        if not name.lower().endswith('.xliff'):
-            name += '.xliff'
-        xliff.name = name
-
-        return cls(xliff)
-
-    @staticmethod
-    def prepare_segment(source_segment, target_segment=None):
-        source_segment = deepcopy(source_segment)
-        if target_segment is not None:
-            target_segment = deepcopy(target_segment)
-
-        ids = {}
-
-        source_string = ''
-        if source_segment.text is not None:
-            source_string += html.escape(source_segment.text)
-        for any_child in source_segment.findall('.//'):
-            any_child.tag = etree.QName(any_child).localname
-            if any_child.attrib.get('id', None) is None:
-                if any_child.text is not None:
-                    source_string += any_child.text
-                continue
-            child_id = '-'.join((any_child.tag, any_child.attrib['id']))
-
-            if child_id not in ids:
-                ids[child_id] = str(len(ids) + 1)
-
-            source_string += '<' + '-'.join((any_child.tag, ids[child_id])) + '>'
-
-            if any_child.tail is not None:
-                source_string += html.escape(any_child.tail)
-
-        target_string = ''
-        if target_segment is not None:
-            if target_segment.text is not None:
-                target_string = html.escape(target_segment.text)
-            for any_child in target_segment.findall('.//'):
-                any_child.tag = etree.QName(any_child).localname
-                if any_child.attrib.get('id', None) is None:
-                    if any_child.text is not None:
-                        source_string += any_child.text
-                    continue
-                child_id = '-'.join((any_child.tag, any_child.attrib['id']))
-
-                if child_id not in ids:
-                    ids[child_id] = str(len(ids) + 1)
-
-                target_string += '<' + '-'.join((any_child.tag, ids[child_id])) + '>'
-
-                if any_child.tail is not None:
-                    target_string += html.escape(any_child.tail)
-
-        return source_string, target_string
+        return cls(name, xml_root)
 
     def save(self, output_directory):
         self.xml_root.getroottree().write(os.path.join(output_directory, self.name),
                                           encoding='UTF-8',
                                           xml_declaration=True)
 
-    def submit_segment(self, source_segment, target_segment):
-        source_segment, target_segment = self.prepare_segment(etree.fromstring(source_segment), etree.fromstring(target_segment))
+    def update_segment(self, target_segment, tu_no, segment_no=None, segment_state=None, submitted_by=None):
+        '''
+        Updates a given segment.
 
-        tm_hit = None
-        for source_entry in self.xml_root.xpath('.//xliff:source', namespaces=nsmap):
-            if source_segment == source_entry.text:
-                tm_hit = source_entry.getparent()
-                break
+        Args:
+            target_segment (str): Target segment in HTML.
+            tu_no (str or int): The number of the translation unit .
+            segment_no (str or int) (optional): The number of the segment. Segments
+                                                that make up the entire tu do not have numbers.
+            segment_state (str) (optional): The state of the segment (ie. translated, signed-off, etc.).
+            submitted_by (str) (optional): Username or ID of the segment author.
+        '''
 
-        translation_units = self.xml_root[0]
+        target_segment = etree.fromstring(target_segment)
 
-        if tm_hit is None:
-            new_translation_unit = etree.SubElement(translation_units,
-                                                    '{{{0}}}unit'.format(nsmap['xliff']),
-                                                    {'id':str(len(translation_units)+1)})
+        assert etree.QName(target_segment).localname == 'target'
 
-            new_segment = etree.SubElement(new_translation_unit,
-                                          '{{{0}}}segment'.format(nsmap['xliff']),
-                                          {'id':str(len(translation_units.xpath('.//xliff:segment', namespaces=nsmap))+1)})
+        for any_child in target_segment:
+            if 'dataref' in any_child.attrib:
+                any_child.attrib['dataRef'] = any_child.attrib.pop('dataref')
 
-            etree.SubElement(new_segment, '{{{0}}}source'.format(nsmap['xliff'])).text = source_segment
-            etree.SubElement(new_segment, '{{{0}}}target'.format(nsmap['xliff'])).text = target_segment
+            any_child.attrib.pop('contenteditable', None)
+
+        if self.xliff_version < 2.0:
+            active_g_tags = []
+            for any_child in target_segment:
+                if any_child.tag.endswith('g'):
+                    if any_child.tail is not None:
+                        if len(active_g_tags) > 0:
+                            active_g_tag = active_g_tags[0]
+                            if len(active_g_tag) > 0:
+                                if active_g_tag[-1].tail is None:
+                                    active_g_tag[-1].tail = ''
+                                active_g_tag[-1].tail += any_child.tail
+                            else:
+                                if active_g_tag.text is None:
+                                    active_g_tag.text = ''
+                                active_g_tag.text += any_child.tail
+
+                            if any_child.text.startswith('</'):
+                                for g_tag in active_g_tags:
+                                    if g_tag.attrib['id'] == any_child.attrib['id']:
+                                        active_g_tags.remove(g_tag)
+                                        if len(active_g_tags) > 0:
+                                            target_segment.replace(any_child, active_g_tags[0])
+                                        else:
+                                            target_segment.remove(any_child)
+                                        break
+                            else:
+                                any_child.text = None
+                                any_child.tail = None
+                                active_g_tags.append(any_child)
+                                target_segment.remove(any_child)
+
+                        else:
+                            if any_child.text.startswith('</'):
+                                preceding_sibling = any_child.getprevious()
+                                if preceding_sibling is not None:
+                                    if target_segment.text is None:
+                                        target_segment.text = ''
+                                    target_segment.text += any_child.tail
+                                else:
+                                    if preceding_sibling.tail is None:
+                                        preceding_sibling.tail = ''
+                                    preceding_sibling.tail += any_child.tail
+                                target_segment.remove(any_child)
+                            else:
+                                any_child.text = any_child.tail
+                                any_child.tail = None
+                                active_g_tags.append(any_child)
+
+                    else:
+                        if any_child.text.startswith('</'):
+                            for g_tag in active_g_tags:
+                                if g_tag.attrib['id'] == any_child.attrib['id']:
+                                    active_g_tags.remove(g_tag)
+                                    if len(active_g_tags) > 0:
+                                        target_segment.replace(any_child, active_g_tags[0])
+                                    else:
+                                        target_segment.remove(any_child)
+                                    break
+                        else:
+                            any_child.text = None
+                            if len(active_g_tags) > 0:
+                                target_segment.remove(any_child)
+                            active_g_tags.append(any_child)
+
+                else:
+                    any_child.text = None
+                    if len(active_g_tags) > 0:
+                        active_g_tags[0].append(any_child)
 
         else:
-            tm_hit[1].text = target_segment
+            target_segment.tag = '{{{0}}}target'.format(self.nsmap[None])
+            for child in target_segment:
+                child.tag = '{{{0}}}{1}'.format(self.nsmap[None], etree.QName(child).localname)
+
+        _target_segment = deepcopy(target_segment)
+
+        translation_unit = self.translation_units.find('translation-unit[@id="{0}"]'.format(tu_no))
+
+        if segment_no is not None:
+            segment = translation_unit.find('segment[@id="{0}"]'.format(segment_no), self.nsmap)
+            if segment is None:
+                segment = translation_unit.find('segment[@id="{0}"]'.format(segment_no))
+        else:
+            segment = translation_unit.findall('segment', self.nsmap)[0]
+            if segment is None:
+                segment = translation_unit.findall('segment')[0]
+
+        target = segment.find('target', self.nsmap)
+        if target is None:
+            target = segment.find('target')
+        if target is None:
+            segment.append(target_segment)
+        else:
+            segment[segment.index(target)] = target_segment
+
+        if self.xliff_version >= 2.0:
+            _translation_unit = self.xml_root.find('.//unit[@id="{0}"]'.format(tu_no), self.nsmap)
+
+            if segment_no is not None:
+                _segment = _translation_unit.find('segment[@id="{0}"]'.format(segment_no), self.nsmap)
+            else:
+                _segment = _translation_unit.findall('segment', self.nsmap)[0]
+
+            if segment_state and submitted_by:
+                _segment.attrib['state'] = segment_state
+                _segment.attrib['modified_on'] = str(datetime.datetime.utcnow())
+                _segment.attrib['modified_by'] = submitted_by
+
+            for any_child in _target_segment:
+                any_child.text = None
+
+            _target = _segment.find('target', self.nsmap)
+            if _target is None:
+                _target = _segment.find('target')
+            if _target is None:
+                _segment.append(_target_segment)
+            else:
+                _segment[_segment.index(_target)] = _target_segment
+
+        else:
+            _translation_unit = self.xml_root.find('.//trans-unit[@id="{0}"]'.format(tu_no), self.nsmap)
+            if segment_state and submitted_by:
+                _target_segment.attrib['state'] = segment_state
+                _target_segment.attrib['modified_on'] = str(datetime.datetime.utcnow())
+                _target_segment.attrib['modified_by'] = submitted_by
+
+            if segment_no is not None:
+                _segment = _translation_unit.find('target//mrk[@mid="{0}"]'.format(segment_no), self.nsmap)
+                _target_segment.tag = '{{{0}}}mrk'.format(self.nsmap[None])
+                _target_segment.attrib['mtype'] = 'seg'
+                _target_segment.attrib['mid'] = str(segment_no)
+            else:
+                _segment = _translation_unit.find('target', self.nsmap)
+                _target_segment.tag = '{{{0}}}target'.format(self.nsmap[None])
+
+            _segment.getparent().replace(_segment, _target_segment)
