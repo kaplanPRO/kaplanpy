@@ -73,19 +73,19 @@ class KDB:
 
         self.submit_entries(entries, overwrite)
 
-    def lookup_entry(self, source_segment, diff=0.5):
+    def lookup_segment(self, source_segment, diff=0.5):
         source_segment = etree.fromstring(source_segment)
         for child in source_segment:
             child.tag = etree.QName(child).localname
 
-        source_entry, tags = self.segment_to_entry(source_segment)
+        source_entry, tags = self.segment_to_entry(source_segment, {})
 
         reversed_tags = {}
         for k in tags:
             reversed_tags[tags[k]] = k
 
         sm = difflib.SequenceMatcher()
-        sm.set_seq1(source_segment)
+        sm.set_seq1(source_entry)
 
         tm_hits = []
 
@@ -94,8 +94,16 @@ class KDB:
             if sm.ratio() > diff:
                 segment = etree.Element('segment')
 
-                source = self.entry_to_segment(tm_entry[0], 'source', reversed_tags)
-                target = self.entry_to_segment(tm_entry[1], 'target', reversed_tags)
+                source = self.entry_to_segment(tm_entry[0], 'source', reversed_tags, source_segment)
+                target = self.entry_to_segment(tm_entry[1], 'target', reversed_tags, source_segment)
+
+                tm_hits.append({'ratio': sm.ratio(),
+                                'source': source,
+                                'target': target})
+
+        tm_hits.sort(reverse=True)
+
+        return tm_hits
 
     def lookup_terms(self): # TODO
         pass
@@ -175,3 +183,16 @@ class KDB:
         self.conn.execute('''INSERT INTO main VALUES (?,?,?,?)''', entry)
 
         self.conn.commit()
+
+    def submit_segment(self, source, target, submitted_by=None, overwrite=True):
+        source = etree.fromstring(source)
+        for child in source:
+            child.tag = etree.QName(child).localname
+        source, tags = self.segment_to_entry(source, {})
+
+        target = etree.fromstring(target)
+        for child in target:
+            child.tag = etree.QName(child).localname
+        target, _ = self.segment_to_entry(target, tags)
+
+        self.submit_entry(source, target, submitted_by, overwrite)
