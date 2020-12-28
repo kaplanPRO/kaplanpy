@@ -203,6 +203,9 @@ class KDB:
         self.conn.commit()
 
     def submit_entry(self, source, target, submitted_by=None, overwrite=True):
+        if target is None or target == '':
+            return False
+
         source = source.replace('"', '""')
         target = target.replace('"', '""')
         if overwrite:
