@@ -91,7 +91,7 @@ class KDB:
 
         for tm_entry in self.conn.execute('''SELECT * FROM main''').fetchall():
             sm.set_seq2(tm_entry[0])
-            if sm.ratio() > diff:
+            if sm.ratio() >= diff:
                 segment = etree.Element('segment')
 
                 source = self.entry_to_segment(tm_entry[0], 'source', reversed_tags, source_segment)
@@ -105,8 +105,41 @@ class KDB:
 
         return tm_hits
 
-    def lookup_terms(self): # TODO
-        pass
+    def lookup_terms(self, source_segment, diff=0.7, casesensitive=False):
+        source_entry, _ = self.segment_to_entry(source_segment)
+        source_entry = regex.sub('<[^<>]+>', ' ', source_entry)
+        if not casesensitive:
+            source_entry = source_entry.lower()
+        source_entry = source_entry.split()
+
+        sm = difflib.SequenceMatcher()
+
+        kdb_hits = []
+        for kdb_entry in self.conn.execute('''SELECT * FROM main''').fetchall():
+            if not casesensitive:
+                kdb_source_entry = kdb_entry[0].lower().split()
+            else:
+                kdb_source_entry = kdb_entry[0].split()
+            kdb_hits_by_word = []
+            for kdb_source_word in kdb_source_entry:
+                kdb_source_len = len(kdb_source_word)
+                sm.set_seq2(kdb_source_word)
+                kdb_hit_ratios = []
+                for source_word in source_entry:
+                    sm.set_seq1(source_word)
+                    kdb_hit_ratios.append(sm.ratio())
+                kdb_hits_by_word.append([max(kdb_hit_ratios)*kdb_source_len, kdb_source_len])
+
+            kdb_hit_ratio = sum([word_ratio for word_ratio, word_length in kdb_hits_by_word])/sum([word_length for word_ratio, word_length in kdb_hits_by_word])
+
+            if kdb_hit_ratio >= diff:
+                kdb_hits.append((kdb_hit_ratio,
+                                kdb_entry[0],
+                                kdb_entry[1]))
+
+        kdb_hits.sort(reverse=True)
+
+        return kdb_hits
 
     @classmethod
     def new(cls, path_to_kdb, src, trgt):
