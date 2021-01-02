@@ -169,6 +169,7 @@ class KDB:
             entry += html.escape(source_or_target_segment.text)
 
         for child in source_or_target_segment:
+            child.tag = etree.QName(child).localname
             if child.attrib.get('id', None) is None:
                 if child.text is not None:
                     entry += child.text
