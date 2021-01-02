@@ -71,6 +71,52 @@ class KDB:
 
         return segment
 
+    def export_xliff(self, path_to_xliff):
+        path_to_xliff = pathlib.Path(path_to_xliff)
+        if path_to_xliff.suffix.lower() != '.xliff':
+            path_to_xliff = path_to_xliff.with_suffix('.xliff')
+
+        xliff_xml = etree.Element('xliff',
+                                  {'version':'2.1',
+                                   'srcLang':self.src,
+                                   'trgLang':self.trgt},
+                                  {None:'urn:oasis:names:tc:xliff:document:2.1',
+                                   'kaplan':'https://kaplan.pro'})
+
+        translation_units = etree.SubElement(xliff_xml,
+                                             'file',
+                                             {'id':'1'})
+
+        tu_i = 1
+
+        for kdb_entry in self.conn.execute('''SELECT * FROM main''').fetchall():
+            if kdb_entry[0] == '' or kdb_entry[1] == '':
+                continue
+            translation_unit = etree.SubElement(translation_units,
+                                                'unit',
+                                                {'id':str(tu_i)})
+
+            segment = etree.SubElement(translation_unit,
+                                       'segment',
+                                       {'id':str(tu_i)})
+
+            source = self.entry_to_segment(kdb_entry[0],
+                                           'source',
+                                           safe_mode=False)
+            segment.append(source)
+
+            target = self.entry_to_segment(kdb_entry[1],
+                                           'target',
+                                           safe_mode=False)
+            segment.append(target)
+
+            tu_i += 1
+
+        xliff = XLIFF(path_to_xliff.name,
+                      xliff_xml)
+
+        xliff.save(path_to_xliff.parent)
+
     def import_csv(self, path_to_csv, overwrite=True):
         entries = []
 
