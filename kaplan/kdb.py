@@ -11,6 +11,9 @@ import pathlib
 import regex
 import sqlite3
 
+# Internal Python files
+from .xliff import XLIFF
+
 class KDB:
     '''
     Kaplan Database file
@@ -70,6 +73,29 @@ class KDB:
                                     target.replace('"', '""'),
                                     time,
                                     file_name))
+
+        self.submit_entries(entries, overwrite)
+
+    def import_xliff(self, path_to_xliff, overwrite=True):
+        entries = []
+
+        time = str(datetime.datetime.utcnow())
+        file_name = pathlib.Path(path_to_xliff).name
+
+        xliff = XLIFF.open_bilingualfile(path_to_xliff)
+
+        for tu in xliff.translation_units:
+            for segment in tu:
+                source, tags = self.segment_to_entry(segment[0], {})
+                target, _ = self.segment_to_entry(segment[1], tags)
+
+                if target == '':
+                    continue
+
+                entries.append((source,
+                                target,
+                                time,
+                                file_name))
 
         self.submit_entries(entries, overwrite)
 
