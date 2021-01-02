@@ -63,8 +63,8 @@ class KDB:
         with open(path_to_csv) as csv_file:
             csv_file = csv.DictReader(csv_file)
             for row in csv_file:
-                source = row[self.src]
-                target = row[self.trgt]
+                source = row['source']
+                target = row['target']
                 if source != '' and target != '':
                     entries.append((source.replace('"', '""'),
                                     target.replace('"', '""'),
