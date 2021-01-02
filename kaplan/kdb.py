@@ -31,7 +31,7 @@ class KDB:
             raise ValueError('Language pair is not a match!')
 
     @staticmethod
-    def entry_to_segment(source_or_target_entry, xml_tag, reversed_tags={}, source_segment=None):
+    def entry_to_segment(source_or_target_entry, xml_tag, reversed_tags={}, source_segment=None, safe_mode=True):
         segment = etree.Element(xml_tag)
 
         for text, tag in regex.findall('([^<>]+)?(<[^<>\s]+/>)?', source_or_target_entry):
@@ -45,15 +45,29 @@ class KDB:
                         segment[-1].tail = ''
                     segment[-1].tail += html.unescape(text)
             if tag != '':
-                tag = tag[1:-2]
-                tag, tag_id = tag.split('-')
+                text_equiv = tag[1:-2]
+                tag, tag_id = text_equiv.split('-')
 
-                if tag_id in reversed_tags and source_segment is not None:
+                if tag_id in reversed_tags and source_segment is not None and safe_mode:
                     source_tag = source_segment.xpath('{0}[@id="{1}"]'.format(tag, reversed_tags[tag_id].split('-')[-1]))
                     if source_tag != []:
                         source_tag = deepcopy(source_tag[0])
                         source_tag.tail = None
                         segment.append(source_tag)
+
+                elif not safe_mode:
+                    if text_equiv.startswith(('sc', 'sm')):
+                        text_equiv = '<' + text_equiv + '>'
+                    elif text_equiv.startswith(('ec', 'em')):
+                        text_equiv = '</' + text_equiv + '>'
+                    else:
+                        text_equiv = '<' + text_equiv + '/>'
+
+                    tag_xml = etree.Element(tag,
+                                            {'id':tag_id,
+                                             'equiv':html.escape(text_equiv)})
+
+                    segment.append(tag_xml)
 
         return segment
 
