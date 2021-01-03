@@ -183,9 +183,7 @@ class KDB:
                 source = self.entry_to_segment(tm_entry[0], 'source', reversed_tags, source_segment)
                 target = self.entry_to_segment(tm_entry[1], 'target', reversed_tags, source_segment)
 
-                tm_hits.append({'ratio': sm.ratio(),
-                                'source': source,
-                                'target': target})
+                tm_hits.append((sm.ratio(), source, target))
 
         tm_hits.sort(reverse=True)
 
@@ -219,9 +217,7 @@ class KDB:
             kdb_hit_ratio = sum([word_ratio for word_ratio, word_length in kdb_hits_by_word])/sum([word_length for word_ratio, word_length in kdb_hits_by_word])
 
             if kdb_hit_ratio >= diff:
-                kdb_hits.append((kdb_hit_ratio,
-                                kdb_entry[0],
-                                kdb_entry[1]))
+                kdb_hits.append((kdb_hit_ratio, kdb_entry[0], kdb_entry[1]))
 
         kdb_hits.sort(reverse=True)
 
