@@ -1,7 +1,7 @@
 # Installed libraries
 from lxml import etree
 
-# Standard Python librariesimport zipfile
+# Standard Python libraries
 import json
 import os
 import zipfile
@@ -26,8 +26,9 @@ class Project:
         self.target_language = project_metadata['target_language']
         self.files = project_metadata['files']
         self.translation_memories = project_metadata.get('translation_memories', {})
+        self.termbases = project_metadata.get('termbases', {})
 
-    def export(self, target_path, files_to_export=None, include_source_and_tm=True):
+    def export(self, target_path, files_to_export=None, include_source_and_resources=True):
         if not target_path.lower().endswith('.kpp'):
             target_path += '.kpp'
 
@@ -44,7 +45,7 @@ class Project:
                     continue
                 file_dict = {}
 
-                if include_source_and_tm:
+                if include_source_and_resources:
                     source = self.files[i].get('source')
                     if source:
                         file_dict['source'] = '/'.join((self.source_language,
@@ -68,7 +69,7 @@ class Project:
 
                 manifest['files'][i] = file_dict
 
-            if len(self.translation_memories) > 0 and include_source_and_tm:
+            if self.translation_memories != {} and include_source_and_resources:
                 manifest['tms'] = {}
                 for i in range(len(self.translation_memories)):
                     manifest['tms'][i] = '/'.join(('TM',
@@ -76,6 +77,15 @@ class Project:
 
                     project_package.write(self.translation_memories[i],
                                           manifest['tms'][i])
+
+            if self.termbases != {} and include_source_and_resources:
+                manifest['tbs'] = {}
+                for i in range(len(self.translation_memories)):
+                    manifest['tbs'][i] = '/'.join(('TB',
+                                                  os.path.basename(self.termbases[i])))
+
+                    project_package.write(self.termbases[i],
+                                          manifest['tbs'][i])
 
             project_package.writestr('manifest.json',
                                      json.dumps(manifest, indent=4))
@@ -93,6 +103,11 @@ class Project:
             if 'tms' in manifest:
                 for i in manifest['tms']:
                     project_package.extract(manifest['tms'][i],
+                                            project_directory)
+
+            if 'tbs' in manifest:
+                for i in manifest['tbs']:
+                    project_package.extract(manifest['tbs'][i],
                                             project_directory)
 
         return manifest
