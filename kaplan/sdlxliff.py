@@ -13,8 +13,8 @@ class SDLXLIFF(XLIFF):
             raise TypeError('This class may only handle .sdlxliff files.')
         super().__init__(name, xml_root)
 
-    def get_translation_units(self):
-        translation_units = super().get_translation_units()
+    def get_translation_units(self, include_segments_wo_id=False):
+        translation_units = super().get_translation_units(include_segments_wo_id)
         for tu in translation_units:
             for segment in tu:
                 if not segment.attrib.get('id') != 'N/A':

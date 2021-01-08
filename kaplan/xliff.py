@@ -31,7 +31,7 @@ class XLIFF:
         self.xliff_version = float(self.xml_root.attrib['version'])
         self.nsmap = self.xml_root.nsmap
 
-    def get_translation_units(self):
+    def get_translation_units(self, include_segments_wo_id=True):
 
         translation_units = etree.Element('translation-units')
 
@@ -55,12 +55,12 @@ class XLIFF:
                         target_segment = translation_unit.find('target//mrk[@mid="{0}"]'.format(source_segment.attrib['mid']), self.nsmap)
 
                         segments.append([source_segment, target_segment])
-                elif translation_unit.find('seg-source', self.nsmap) is not None:
+                elif translation_unit.find('seg-source', self.nsmap) is not None and include_segments_wo_id:
                     for source_segment in translation_unit.findall('seg-source', self.nsmap):
                         target_segment = translation_unit.find('target', self.nsmap)
 
                         segments.append([source_segment, target_segment])
-                else:
+                elif translation_unit.find('source', self.nsmap) is not None and include_segments_wo_id:
                     segments.append([translation_unit.find('source', self.nsmap), translation_unit.find('target', self.nsmap)])
 
 
