@@ -48,7 +48,6 @@ class XLIFF:
         else:
             for translation_unit in self.xml_root.findall('.//trans-unit', self.nsmap):
                 segments = []
-                _g_counter = {}
                 if translation_unit.find('seg-source//mrk[@mtype="seg"]', self.nsmap) is not None:
                     for source_segment in translation_unit.findall('seg-source//mrk[@mtype="seg"]', self.nsmap):
                         target_segment = translation_unit.find('target//mrk[@mid="{0}"]'.format(source_segment.attrib['mid']), self.nsmap)
@@ -65,6 +64,7 @@ class XLIFF:
 
                 _translation_unit = etree.Element('translation-unit', translation_unit.attrib)
                 for segment in segments:
+
                     _segment = etree.SubElement(_translation_unit, 'segment', {'id': segment[0].attrib.get('mid', 'N/A')})
 
                     _source = deepcopy(segment[0])
@@ -89,14 +89,11 @@ class XLIFF:
                             elif _any_child.tag.startswith('e'):
                                 _any_child.text = '</{0}-{1}>'.format(etree.QName(_any_child).localname[1:], _any_child.attrib.get('id', 'N/A'))
                             elif _any_child.tag.endswith('g'):
-                                if _any_child.attrib['id'] not in _g_counter:
-                                    _g_counter[_any_child.attrib['id']] = str(len(_g_counter) + 1)
                                 _b_g_tag = etree.Element('g', _any_child.attrib)
-                                _b_g_tag.attrib['no'] = _g_counter[_any_child.attrib['id']]
                                 _e_g_tag = deepcopy(_b_g_tag)
 
-                                _b_g_tag.text = '<g-{0}>'.format(_g_counter[_any_child.attrib['id']])
-                                _e_g_tag.text = '</g-{0}>'.format(_g_counter[_any_child.attrib['id']])
+                                _b_g_tag.text = '<g-{0}>'.format(_any_child.attrib['id'])
+                                _e_g_tag.text = '</g-{0}>'.format(_any_child.attrib['id'])
 
                                 _parent = _any_child.getparent()
                                 _parent.replace(_any_child, _b_g_tag)
