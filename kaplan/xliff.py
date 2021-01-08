@@ -31,7 +31,9 @@ class XLIFF:
         self.xliff_version = float(self.xml_root.attrib['version'])
         self.nsmap = self.xml_root.nsmap
 
-        self.translation_units = etree.Element('translation-units')
+    def get_translation_units(self):
+
+        translation_units = etree.Element('translation-units')
 
         if self.xliff_version >= 2.0:
             for translation_unit in self.xml_root.findall('.//unit', self.nsmap):
@@ -44,7 +46,7 @@ class XLIFF:
                     if 'equiv' in _any_child.attrib:
                         _any_child.text = html.unescape(_any_child.attrib['equiv'])
 
-                self.translation_units.append(_translation_unit)
+                translation_units.append(_translation_unit)
         else:
             for translation_unit in self.xml_root.findall('.//trans-unit', self.nsmap):
                 segments = []
@@ -107,7 +109,11 @@ class XLIFF:
                             else:
                                 _any_child.text = '<{0}-{1}/>'.format(etree.QName(_any_child).localname, _any_child.attrib.get('id', 'N/A'))
 
-                self.translation_units.append(_translation_unit)
+                translation_units.append(_translation_unit)
+
+        etree.cleanup_namespaces(translation_units)
+
+        return translation_units
 
     def merge_segments(self, *args):
         raise TypeError('This function is available for the kxliff.KXLIFF class only.')
@@ -225,25 +231,6 @@ class XLIFF:
                 child.tag = '{{{0}}}{1}'.format(self.nsmap[None], etree.QName(child).localname)
 
         _target_segment = deepcopy(target_segment)
-
-        translation_unit = self.translation_units.find('translation-unit[@id="{0}"]'.format(tu_no))
-
-        if segment_no is not None:
-            segment = translation_unit.find('segment[@id="{0}"]'.format(segment_no), self.nsmap)
-            if segment is None:
-                segment = translation_unit.find('segment[@id="{0}"]'.format(segment_no))
-        else:
-            segment = translation_unit.findall('segment', self.nsmap)[0]
-            if segment is None:
-                segment = translation_unit.findall('segment')[0]
-
-        target = segment.find('target', self.nsmap)
-        if target is None:
-            target = segment.find('target')
-        if target is None:
-            segment.append(target_segment)
-        else:
-            segment[segment.index(target)] = target_segment
 
         if self.xliff_version >= 2.0:
             _translation_unit = self.xml_root.find('.//unit[@id="{0}"]'.format(tu_no), self.nsmap)
