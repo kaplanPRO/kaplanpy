@@ -49,16 +49,21 @@ class XLIFF:
             for translation_unit in self.xml_root.findall('.//trans-unit', self.nsmap):
                 segments = []
                 _g_counter = {}
-                _translation_unit = etree.Element('translation-unit', translation_unit.attrib)
-                if translation_unit.find('seg-source', self.nsmap) is not None:
-                    for source_segment in translation_unit.findall('seg-source//mrk', self.nsmap):
+                if translation_unit.find('seg-source//mrk[@mtype="seg"]', self.nsmap) is not None:
+                    for source_segment in translation_unit.findall('seg-source//mrk[@mtype="seg"]', self.nsmap):
                         target_segment = translation_unit.find('target//mrk[@mid="{0}"]'.format(source_segment.attrib['mid']), self.nsmap)
 
                         segments.append([source_segment, target_segment])
+                elif translation_unit.find('seg-source', self.nsmap) is not None:
+                    for source_segment in translation_unit.findall('seg-source', self.nsmap):
+                        target_segment = translation_unit.find('target', self.nsmap)
 
+                        segments.append([source_segment, target_segment])
                 else:
                     segments.append([translation_unit.find('source', self.nsmap), translation_unit.find('target', self.nsmap)])
 
+
+                _translation_unit = etree.Element('translation-unit', translation_unit.attrib)
                 for segment in segments:
                     _segment = etree.SubElement(_translation_unit, 'segment', {'id': segment[0].attrib.get('mid', 'N/A')})
 
