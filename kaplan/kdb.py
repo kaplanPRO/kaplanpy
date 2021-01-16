@@ -144,7 +144,7 @@ class KDB:
 
         xliff = XLIFF.open_bilingualfile(path_to_xliff)
 
-        for tu in xliff.translation_units:
+        for tu in xliff.get_translation_units():
             for segment in tu:
                 source, tags = self.segment_to_entry(segment[0], {})
                 target, _ = self.segment_to_entry(segment[1], tags)
