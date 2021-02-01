@@ -185,8 +185,6 @@ class KDB:
 
                 tm_hits.append((sm.ratio(), source, target))
 
-        tm_hits.sort(reverse=True)
-
         return tm_hits
 
     def lookup_terms(self, source_segment, diff=0.7, casesensitive=False):
