@@ -123,7 +123,7 @@ class KDB:
         time = str(datetime.datetime.utcnow())
         file_name = pathlib.Path(path_to_csv).name
 
-        with open(path_to_csv) as csv_file:
+        with open(path_to_csv, encoding='UTF-8') as csv_file:
             csv_file = csv.DictReader(csv_file)
             for row in csv_file:
                 source = row['source']

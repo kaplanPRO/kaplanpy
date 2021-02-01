@@ -336,16 +336,32 @@ class KXLIFF(XLIFF):
                 if po_id not in po_entries:
                     po_entries[po_id] = [trans_unit.attrib['metadata'], [], []]
 
-                source_text = ''
-                target_text = ''
-                for segment in trans_unit.xpath('.//xliff:segment|.//xliff:ignorable', namespaces={'xliff':self.nsmap[None]}):
-                    source_text += segment.find('source', self.nsmap).text
-                    target = segment.find('target', self.nsmap)
-                    if target is not None:
-                        target_text += target.text
+                segment = ['' ,'']
+                for xml_segment in trans_unit.xpath('.//xliff:segment|.//xliff:ignorable', namespaces={'xliff':self.nsmap[None]}):
+                    segment[0] += xml_segment.find('source', self.nsmap).text
+                    target = xml_segment.find('target', self.nsmap)
+                    if target is not None and target.text is not None:
+                        segment[1] += target.text
                 else:
-                    po_entries[po_id][1].append('{0} "{1}"'.format(keys[0], source_text))
-                    po_entries[po_id][2].append('{0} "{1}"'.format(keys[1], target_text))
+                    for s_i in range(len(segment)):
+                        source_or_target_segment = ['']
+                        for regex_hit in regex.findall('([^\s]+)?([\s]+)?', segment[s_i]):
+                            for text_or_space in regex_hit:
+                                if (text_or_space != '' and (len(source_or_target_segment[-1]) >= 80 or len(source_or_target_segment[-1] + text_or_space) >= 80)):
+                                    source_or_target_segment.append(text_or_space)
+                                else:
+                                    source_or_target_segment[-1] += text_or_space
+                        else:
+                            if len(source_or_target_segment) > 1 and source_or_target_segment[0] != '':
+                                source_or_target_segment.insert(0, '')
+
+                            for i in range(len(source_or_target_segment)):
+                                source_or_target_segment[i] = '"' + source_or_target_segment[i] + '"'
+
+                            segment[s_i] = source_or_target_segment
+
+                    po_entries[po_id][1].append('{0} {1}'.format(keys[0], '\n'.join(segment[0])))
+                    po_entries[po_id][2].append('{0} {1}'.format(keys[1], '\n'.join(segment[1])))
 
             with open(os.path.join(output_directory, source_filename), 'w') as outfile:
                 outfile.write(source_file.find('kaplan:internal-file', self.nsmap).text + '\n')
@@ -785,7 +801,7 @@ class KXLIFF(XLIFF):
 
             entries = []
 
-            regex_compile = regex.compile('([a-z0-9\[\]]+)?\s?"(.*?)"$')
+            regex_compile = regex.compile('([a-z0-9\[\]_]+)?\s?"(.*?)"$')
 
             with open(source_file, encoding='UTF-8') as po_file:
                 entry = {}
@@ -932,7 +948,10 @@ class KXLIFF(XLIFF):
             new_segments = etree.Element('{{{0}}}segments'.format(nsmap['xliff']))
             new_segment = etree.SubElement(new_segments, '{{{0}}}segment'.format(nsmap['xliff']))
             new_source = etree.SubElement(new_segment, '{{{0}}}source'.format(nsmap['xliff']))
-            etree.SubElement(new_segment, '{{{0}}}target'.format(nsmap['xliff']))
+            if not name.lower().endswith('.po'):
+                etree.SubElement(new_segment, '{{{0}}}target'.format(nsmap['xliff']))
+            else:
+                new_segment.append(segment.find('xliff:target', nsmap))
 
             def create_segments(text_element, len_sentences, new_segment, new_source, new_segments=new_segments):
                 while text_element is not None and len(text_element) > 0:
