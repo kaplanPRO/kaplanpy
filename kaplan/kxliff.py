@@ -109,9 +109,11 @@ class KXLIFF(XLIFF):
                             for active_tag in active_tags:
                                 if active_tag[0] == target_child.attrib['id']:
                                     removed_element = etree.fromstring(original_data.find('data[@id="{0}"]'.format(active_tag[1]), self.nsmap).text)
-                                    if removed_element.tag == last_parent.tag:
+                                    if removed_element is not None:
+                                        break
+                                    if last_parent is not None and removed_element.tag == last_parent.tag:
                                         last_parent = None
-                                    if removed_element.tag == last_run.tag:
+                                    if last_run is not None and removed_element.tag == last_run.tag:
                                         last_run = None
                                     active_tags.remove(active_tag)
                                     break
