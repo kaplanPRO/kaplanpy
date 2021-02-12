@@ -39,12 +39,21 @@ class XLIFF:
             for translation_unit in self.xml_root.findall('.//unit', self.nsmap):
                 _translation_unit = deepcopy(translation_unit)
                 _translation_unit.tag = 'translation-unit'
+                _tu_notes = _translation_unit.find('notes', self.nsmap)
                 for _child in _translation_unit:
                     if not _child.tag.endswith(('}segment', '}ignorable')):
                         _translation_unit.remove(_child)
                 for _any_child in _translation_unit.findall('.//'):
                     if 'equiv' in _any_child.attrib:
                         _any_child.text = html.unescape(_any_child.attrib['equiv'])
+
+                if _tu_notes is not None:
+                    for _segment in _translation_unit.findall('segment', self.nsmap):
+                        segment_notes = etree.Element('notes')
+                        for note in _tu_notes.xpath('xliff:note[@state="open" and @segment="{0}"]'.format(_segment.attrib.get('id')), namespaces={'xliff': self.nsmap[None]}):
+                            segment_notes.append(note)
+                        if len(segment_notes) > 0:
+                            _segment.append(segment_notes)
 
                 translation_units.append(_translation_unit)
         else:
