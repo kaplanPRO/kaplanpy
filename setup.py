@@ -16,7 +16,6 @@ setuptools.setup(
     long_description_content_type='text/markdown',
     url='https://github.com/kaplanPRO/kaplanpy',
     project_urls = {
-        'Kaplan Desktop': 'https://sourceforge.net/projects/kaplan-desktop',
         'Kaplan Homepage': 'https://kaplan.pro',
     },
     packages=setuptools.find_packages(),
