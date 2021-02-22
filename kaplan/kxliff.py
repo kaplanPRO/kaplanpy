@@ -13,7 +13,7 @@ import string
 import zipfile
 
 # Internal Python files
-from .utils import get_current_time_in_utc, remove_dir
+from .utils import remove_dir
 from .xliff import XLIFF
 
 nsmap = {
