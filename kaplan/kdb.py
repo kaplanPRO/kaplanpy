@@ -117,6 +117,9 @@ class KDB:
 
         xliff.save(path_to_xliff.parent)
 
+    def get_all_source_entries(self):
+        return self.conn.execute('''SELECT source FROM main''').fetchall()
+
     def import_csv(self, path_to_csv, overwrite=True):
         entries = []
 
