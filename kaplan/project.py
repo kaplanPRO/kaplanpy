@@ -32,6 +32,7 @@ class Project:
         self.files = project_metadata['files']
         self.translation_memories = project_metadata.get('translation_memories', {})
         self.termbases = project_metadata.get('termbases', {})
+        self.reports = project_metadata.get('reports', {})
 
     def analyze(self):
 
@@ -174,6 +175,9 @@ class Project:
 
                     project_package.write(self.termbases[i],
                                           manifest['tbs'][i])
+
+            if self.reports != {}:
+                manifest['reports'] = self.reports
 
             project_package.writestr('manifest.json',
                                      json.dumps(manifest, indent=4))
