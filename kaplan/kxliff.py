@@ -4,6 +4,7 @@ import regex
 
 # Standard Python libraries
 from copy import deepcopy
+import datetime
 import html
 from io import BytesIO
 import os
@@ -12,7 +13,7 @@ import string
 import zipfile
 
 # Internal Python files
-from .utils import get_current_time_in_utc, remove_dir
+from .utils import remove_dir
 from .xliff import XLIFF
 
 nsmap = {
@@ -36,6 +37,31 @@ class KXLIFF(XLIFF):
         if not name.lower().endswith('.kxliff') or 'kaplan' not in xml_root.nsmap:
             raise TypeError('This class may only handle .kxliff files.')
         super().__init__(name, xml_root)
+
+    def add_comment(self, segment_i, comment, author):
+        segment = self.xml_root.xpath('.//xliff:segment[@id="{0}"]|segment[@id="{0}"]'.format(segment_i), namespaces=nsmap)
+
+        if segment != []:
+            unit = segment[0].getparent()
+            notes = unit.xpath('xliff:notes|notes', namespaces=nsmap)
+            if notes != []:
+                notes = notes[0]
+            else:
+                notes = etree.SubElement(unit,
+                                         '{{{0}}}notes'.format(nsmap['xliff']))
+
+            note = etree.SubElement(notes,
+                                    '{{{0}}}note'.format(nsmap['xliff']),
+                                    {'id': str(len(notes.xpath('xliff:note', namespaces=nsmap))+1),
+                                     'segment': str(segment_i),
+                                     'state': 'open',
+                                     'added_at': str(datetime.datetime.utcnow()),
+                                     'added_by': author})
+
+            note.text = comment
+
+        else:
+            raise ValueError('Segment not found.')
 
     def generate_target_translation(self, output_directory, path_to_source_file=None):
         '''
@@ -1200,3 +1226,13 @@ class KXLIFF(XLIFF):
             segment_counter += 1
 
         return cls(name + '.kxliff', xml_root)
+
+    def resolve_comment(self, segment_i, comment_i, author):
+        comment = self.xml_root.xpath('.//xliff:note[@segment="{0}" and @id="{1}"]'.format(segment_i, comment_i), namespaces=nsmap)
+        if comment != []:
+            comment = comment[0]
+            comment.attrib['resolved_at'] = str(datetime.datetime.utcnow())
+            comment.attrib['resolved_by'] = author
+            comment.attrib['state'] = 'resolved'
+        else:
+            raise ValueError('Comment not found.')
