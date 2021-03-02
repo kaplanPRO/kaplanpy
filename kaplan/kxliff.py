@@ -531,31 +531,41 @@ class KXLIFF(XLIFF):
 
                     tag = '{{{0}}}{1}'.format(nsmap['xliff'], tag)
 
-                    _data = etree.SubElement(original_data, '{{{0}}}data'.format(nsmap['xliff']))
-                    _data_id = str(len(original_data))
-                    _data.attrib['id'] = _data_id
-                    _data.text = etree.tostring(data, encoding='UTF-8')
+                    _data_text = etree.tostring(data, encoding='UTF-8').decode()
+
+                    for child in original_data:
+                        if child.text == _data_text:
+                            _data = child
+                            _data_id = child.attrib['id']
+                            break
+                    else:
+                        _data = etree.SubElement(original_data, '{{{0}}}data'.format(nsmap['xliff']))
+                        _data_id = str(len(original_data))
+                        _data.attrib['id'] = _data_id
+                        _data.text = _data_text
 
                     _tag = etree.SubElement(source_xml, tag)
-                    _tag_id = str(len(source_xml.findall(tag)))
-                    _tag.attrib['id'] = _tag_id
+                    _tag.attrib['id'] = _data_id
                     _tag.attrib['dataRef'] = _data_id
 
                     if equiv is None:
                         equiv = data.tag.split('}')[-1]
                     if equiv_with_no:
-                        equiv = '<{0}-{1}{2}>'.format(equiv, _tag_id, '/' if standalone else '')
+                        equiv = '<{0}-{1}{2}>'.format(equiv, _data_id, '/' if standalone else '')
                     else:
                         equiv = '<{0}{1}>'.format(data.tag.split('}')[-1], '/' if standalone else '')
 
                     _tag.attrib['equiv'] = html.escape(equiv)
 
-                    return _tag_id
+                    return _data_id
 
                 def add_ending_tag(tu, source_xml, tag, equiv, starting_tag_i):
                     tag = '{{{0}}}{1}'.format(nsmap['xliff'], tag)
 
-                    _tag = etree.SubElement(source_xml, tag, {'id': starting_tag_i})
+                    _tag = etree.SubElement(source_xml,
+                                            tag,
+                                            {'id': starting_tag_i,
+                                             'dataRef': starting_tag_i})
                     _tag.attrib['equiv'] = html.escape('</{0}-{1}>'.format(equiv, starting_tag_i))
 
                 if paragraph_child.tag.endswith('}r'):
@@ -1068,6 +1078,27 @@ class KXLIFF(XLIFF):
         for segment in source_file_reference.findall('.//xliff:segment', nsmap):
 
             source = segment.find('xliff:source', nsmap)
+
+            for ec in source.findall('xliff:ec', nsmap):
+                if ((ec.tail is not None and ec.tail != '')
+                or ec.attrib.get('dataRef') is None or ec.getnext() is None):
+                    continue
+                next_sibling = ec.getnext()
+
+                if (next_sibling.tag.split('}')[-1] == 'sc' and next_sibling.attrib.get('dataRef') is not None
+                and ec.attrib['dataRef'] == next_sibling.attrib['dataRef']):
+                    if next_sibling.tail is not None and next_sibling.tail != '':
+                        prev_sibling = ec.getprevious()
+                        if prev_sibling is not None:
+                            if prev_sibling.tail is None:
+                                prev_sibling.tail = ''
+                            prev_sibling.tail += next_sibling.tail
+                        else:
+                            if source.text is None:
+                                source.text = ''
+                            source.text += next_sibling.tail
+                    source.remove(ec)
+                    source.remove(next_sibling)
 
             prev_ignorable = None
             prev_ignorable_complete = False
