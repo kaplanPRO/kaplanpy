@@ -12,6 +12,7 @@ import regex
 import sqlite3
 
 # Internal Python files
+from .version import __version__ as version
 from .xliff import XLIFF
 
 class KDB:
@@ -22,13 +23,20 @@ class KDB:
     def __init__(self, path_to_kdb, src=None, trgt=None):
         self.conn = sqlite3.connect(path_to_kdb)
 
-        lang_pair = self.conn.execute('''SELECT * FROM metadata''').fetchone()
+        kdb_metadata = self.conn.execute('''SELECT * FROM metadata''').fetchone()
 
-        self.src = lang_pair[0]
-        self.trgt = lang_pair[1]
+        self.src = kdb_metadata[0]
+        self.trgt = kdb_metadata[1]
 
         if src and trgt and (self.src != src or self.trgt != trgt):
             raise ValueError('Language pair is not a match!')
+
+        if len(kdb_metadata) > 2:
+            self.version = tuple(map(int, (kdb_metadata[2].split('-')[0].split('.'))))
+        else:
+            self.version = (0,0,1)
+
+        self.is_outdated = self.version < tuple(map(int, (version.split('-')[0].split('.'))))
 
     @staticmethod
     def entry_to_segment(source_or_target_entry, xml_tag, reversed_tags={}, source_segment=None, safe_mode=True):
@@ -235,10 +243,10 @@ class KDB:
         conn = sqlite3.connect(path_to_kdb)
         cur = conn.cursor()
 
-        cur.execute('''CREATE TABLE metadata (source, target)''')
-        cur.execute('''INSERT INTO metadata VALUES ("{0}", "{1}")'''.format(src.replace('"', '""'), trgt.replace('"', '""')))
+        cur.execute('''CREATE TABLE metadata (source TEXT, target TEXT, version TEXT)''')
+        cur.execute('''INSERT INTO metadata VALUES (?, ?, ?)''', (src.replace('"', '""'), trgt.replace('"', '""'), version))
 
-        cur.execute('''CREATE TABLE main (source, target, time, submitted_by)''')
+        cur.execute('''CREATE TABLE main (id INTEGER PRIMARY KEY AUTOINCREMENT, source TEXT, target TEXT, time TEXT, submitted_by TEXT)''')
 
         conn.commit()
 
@@ -282,7 +290,7 @@ class KDB:
             source_entries = ((entry[0],) for entry in entries)
             self.conn.executemany('''DELETE FROM main WHERE source=?''', source_entries)
 
-        self.conn.executemany('''INSERT INTO main VALUES (?,?,?,?)''', entries)
+        self.conn.executemany('''INSERT INTO main(source, target, time, submitted_by) VALUES (?,?,?,?)''', entries)
 
         self.conn.commit()
 
@@ -300,7 +308,7 @@ class KDB:
                  str(datetime.datetime.utcnow()),
                  submitted_by)
 
-        self.conn.execute('''INSERT INTO main VALUES (?,?,?,?)''', entry)
+        self.conn.execute('''INSERT INTO main(source, target, time, submitted_by) VALUES (?,?,?,?)''', entry)
 
         self.conn.commit()
 
