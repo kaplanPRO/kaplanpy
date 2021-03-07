@@ -189,7 +189,7 @@ class KDB:
 
         tm_hits = []
 
-        for tm_entry in self.conn.execute('''SELECT * FROM main''').fetchall():
+        for tm_entry in self.conn.execute('''SELECT source, target FROM main''').fetchall():
             sm.set_seq2(tm_entry[0])
             if sm.ratio() >= diff:
                 segment = etree.Element('segment')
@@ -211,7 +211,7 @@ class KDB:
         sm = difflib.SequenceMatcher()
 
         kdb_hits = []
-        for kdb_entry in self.conn.execute('''SELECT * FROM main''').fetchall():
+        for kdb_entry in self.conn.execute('''SELECT source, target FROM main''').fetchall():
             if not casesensitive:
                 kdb_source_entry = kdb_entry[0].lower().split()
             else:
