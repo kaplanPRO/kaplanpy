@@ -128,6 +128,9 @@ class KDB:
     def get_all_source_entries(self):
         return self.conn.execute('''SELECT source FROM main''').fetchall()
 
+    def get_entries(self, first_i=None, last_i=None):
+        return self.conn.execute('''SELECT * FROM main''').fetchall()[first_i:last_i]
+
     def import_csv(self, path_to_csv, overwrite=True):
         entries = []
 
