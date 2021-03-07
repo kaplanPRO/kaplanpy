@@ -324,3 +324,21 @@ class KDB:
         target, _ = self.segment_to_entry(target, tags)
 
         self.submit_entry(source, target, submitted_by, overwrite)
+
+    def upgrade(self):
+        assert self.is_outdated, 'KDB object not outdated.'
+
+        if self.version == (0,0,1):
+            self.conn.execute('''ALTER TABLE metadata ADD COLUMN version;''')
+            self.conn.execute('''UPDATE metadata SET version="{0}"'''.format(version))
+            self.conn.commit()
+            all_entries = self.conn.execute('''SELECT * FROM main''').fetchall()
+            self.conn.execute('''DROP TABLE main''')
+            self.conn.commit()
+            self.conn.execute('''CREATE TABLE main (id INTEGER PRIMARY KEY AUTOINCREMENT, source TEXT, target TEXT, time TEXT, submitted_by TEXT)''')
+            self.conn.commit()
+            self.conn.executemany('''INSERT INTO main(source, target, time, submitted_by) VALUES (?,?,?,?)''', all_entries)
+            self.conn.commit()
+
+        self.version = tuple(map(int, (version.split('-')[0].split('.'))))
+        self.is_outdated = False
