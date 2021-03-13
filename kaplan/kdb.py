@@ -278,6 +278,12 @@ class KDB:
 
         return cls(path_to_kdb)
 
+    def remove_rows(self, rows):
+        rows = tuple((row,) for row in rows)
+
+        self.conn.executemany('''DELETE FROM main WHERE id = (?)''', rows)
+        self.conn.commit()
+
     @staticmethod
     def segment_to_entry(source_or_target_segment, tags={}):
         entry = ''
