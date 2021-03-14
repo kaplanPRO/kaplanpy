@@ -12,6 +12,7 @@ import regex
 import sqlite3
 
 # Internal Python files
+from .version import __version__ as version
 from .xliff import XLIFF
 
 class KDB:
@@ -22,13 +23,20 @@ class KDB:
     def __init__(self, path_to_kdb, src=None, trgt=None):
         self.conn = sqlite3.connect(path_to_kdb)
 
-        lang_pair = self.conn.execute('''SELECT * FROM metadata''').fetchone()
+        kdb_metadata = self.conn.execute('''SELECT * FROM metadata''').fetchone()
 
-        self.src = lang_pair[0]
-        self.trgt = lang_pair[1]
+        self.src = kdb_metadata[0]
+        self.trgt = kdb_metadata[1]
 
         if src and trgt and (self.src != src or self.trgt != trgt):
             raise ValueError('Language pair is not a match!')
+
+        if len(kdb_metadata) > 2:
+            self.version = tuple(map(int, (kdb_metadata[2].split('-')[0].split('.'))))
+        else:
+            self.version = (0,0,1)
+
+        self.is_outdated = self.version < tuple(map(int, (version.split('-')[0].split('.'))))
 
     @staticmethod
     def entry_to_segment(source_or_target_entry, xml_tag, reversed_tags={}, source_segment=None, safe_mode=True):
@@ -118,7 +126,15 @@ class KDB:
         xliff.save(path_to_xliff.parent)
 
     def get_all_source_entries(self):
-        return self.conn.execute('''SELECT source FROM main''').fetchall()
+        return [row[0] for row in self.conn.execute('''SELECT source FROM main''').fetchall()]
+
+    def get_entries(self, first_i=None, last_i=None):
+        rows = self.conn.execute('''SELECT * FROM main''').fetchall()
+
+        if self.version < (0,10,0):
+            rows = tuple((None,) + row[:2] + (None,) + row[2:] for row in rows)
+
+        return rows[first_i:last_i]
 
     def import_csv(self, path_to_csv, overwrite=True):
         entries = []
@@ -134,6 +150,7 @@ class KDB:
                 if source != '' and target != '':
                     entries.append((source.replace('"', '""'),
                                     target.replace('"', '""'),
+                                    'imported',
                                     time,
                                     file_name))
 
@@ -157,6 +174,7 @@ class KDB:
 
                 entries.append((source,
                                 target,
+                                'imported',
                                 time,
                                 file_name))
 
@@ -174,19 +192,27 @@ class KDB:
             reversed_tags[tags[k]] = k
 
         sm = difflib.SequenceMatcher()
-        sm.set_seq1(source_entry)
+        sm.set_seq2(source_entry)
 
         tm_hits = []
 
-        for tm_entry in self.conn.execute('''SELECT * FROM main''').fetchall():
-            sm.set_seq2(tm_entry[0])
+        if self.version >= (0,10,0):
+            sql_query = '''SELECT source, target, state, time, submitted_by FROM main'''
+        else:
+            sql_query = '''SELECT source, target, time, submitted_by FROM main'''
+
+        for tm_entry in self.conn.execute(sql_query).fetchall():
+            sm.set_seq1(tm_entry[0])
             if sm.ratio() >= diff:
                 segment = etree.Element('segment')
 
                 source = self.entry_to_segment(tm_entry[0], 'source', reversed_tags, source_segment)
                 target = self.entry_to_segment(tm_entry[1], 'target', reversed_tags, source_segment)
 
-                tm_hits.append((sm.ratio(), source, target))
+                if self.version >= (0,10,0):
+                    tm_hits.append((sm.ratio(), source, target, tm_entry[2], tm_entry[3], tm_entry[4]))
+                else:
+                    tm_hits.append((sm.ratio(), source, target, None, tm_entry[2], tm_entry[3]))
 
         return tm_hits
 
@@ -199,8 +225,13 @@ class KDB:
 
         sm = difflib.SequenceMatcher()
 
+        if self.version >= (0,10,0):
+            sql_query = '''SELECT source, target, state, time, submitted_by FROM main'''
+        else:
+            sql_query = '''SELECT source, target, time, submitted_by FROM main'''
+
         kdb_hits = []
-        for kdb_entry in self.conn.execute('''SELECT * FROM main''').fetchall():
+        for kdb_entry in self.conn.execute(sql_query).fetchall():
             if not casesensitive:
                 kdb_source_entry = kdb_entry[0].lower().split()
             else:
@@ -218,7 +249,10 @@ class KDB:
             kdb_hit_ratio = sum([word_ratio for word_ratio, word_length in kdb_hits_by_word])/sum([word_length for word_ratio, word_length in kdb_hits_by_word])
 
             if kdb_hit_ratio >= diff:
-                kdb_hits.append((kdb_hit_ratio, kdb_entry[0], kdb_entry[1]))
+                if self.version >= (0,10,0):
+                    kdb_hits.append((kdb_hit_ratio, kdb_entry[0], kdb_entry[1], kdb_entry[2], kdb_entry[3], kdb_entry[4]))
+                else:
+                    kdb_hits.append((kdb_hit_ratio, kdb_entry[0], kdb_entry[1], None, kdb_entry[2], kdb_entry[3]))
 
         kdb_hits.sort(reverse=True)
 
@@ -235,14 +269,20 @@ class KDB:
         conn = sqlite3.connect(path_to_kdb)
         cur = conn.cursor()
 
-        cur.execute('''CREATE TABLE metadata (source, target)''')
-        cur.execute('''INSERT INTO metadata VALUES ("{0}", "{1}")'''.format(src.replace('"', '""'), trgt.replace('"', '""')))
+        cur.execute('''CREATE TABLE metadata (source TEXT, target TEXT, version TEXT)''')
+        cur.execute('''INSERT INTO metadata VALUES (?, ?, ?)''', (src.replace('"', '""'), trgt.replace('"', '""'), version))
 
-        cur.execute('''CREATE TABLE main (source, target, time, submitted_by)''')
+        cur.execute('''CREATE TABLE main (id INTEGER PRIMARY KEY AUTOINCREMENT, source TEXT, target TEXT, state TEXT, time TEXT, submitted_by TEXT)''')
 
         conn.commit()
 
         return cls(path_to_kdb)
+
+    def remove_rows(self, rows):
+        rows = tuple((row,) for row in rows)
+
+        self.conn.executemany('''DELETE FROM main WHERE id = (?)''', rows)
+        self.conn.commit()
 
     @staticmethod
     def segment_to_entry(source_or_target_segment, tags={}):
@@ -282,11 +322,15 @@ class KDB:
             source_entries = ((entry[0],) for entry in entries)
             self.conn.executemany('''DELETE FROM main WHERE source=?''', source_entries)
 
-        self.conn.executemany('''INSERT INTO main VALUES (?,?,?,?)''', entries)
+        if self.version >= (0,10,0):
+            self.conn.executemany('''INSERT INTO main(source, target, state, time, submitted_by) VALUES (?,?,?,?,?)''', entries)
+        else:
+            entries = (entry[:2] + entry[3:] for entry in entries)
+            self.conn.executemany('''INSERT INTO main(source, target, time, submitted_by) VALUES (?,?,?,?)''', entries)
 
         self.conn.commit()
 
-    def submit_entry(self, source, target, submitted_by=None, overwrite=True):
+    def submit_entry(self, source, target, submitted_by=None, state='translated', overwrite=True):
         if target is None or target == '':
             return False
 
@@ -295,16 +339,25 @@ class KDB:
         if overwrite:
             self.conn.execute('''DELETE FROM main WHERE source=?''', (source,))
 
-        entry = (source,
-                 target,
-                 str(datetime.datetime.utcnow()),
-                 submitted_by)
+        if self.version >= (0,10,0):
+            entry = (source,
+                     target,
+                     state,
+                     str(datetime.datetime.utcnow()),
+                     submitted_by)
 
-        self.conn.execute('''INSERT INTO main VALUES (?,?,?,?)''', entry)
+            self.conn.execute('''INSERT INTO main(source, target, state, time, submitted_by) VALUES (?,?,?,?,?)''', entry)
+        else:
+            entry = (source,
+                     target,
+                     str(datetime.datetime.utcnow()),
+                     submitted_by)
+
+            self.conn.execute('''INSERT INTO main(source, target, time, submitted_by) VALUES (?,?,?,?)''', entry)
 
         self.conn.commit()
 
-    def submit_segment(self, source, target, submitted_by=None, overwrite=True):
+    def submit_segment(self, source, target, submitted_by=None, state='translated', overwrite=True):
         source = etree.fromstring(source)
         for child in source:
             child.tag = etree.QName(child).localname
@@ -315,4 +368,25 @@ class KDB:
             child.tag = etree.QName(child).localname
         target, _ = self.segment_to_entry(target, tags)
 
-        self.submit_entry(source, target, submitted_by, overwrite)
+        self.submit_entry(source, target, submitted_by, state, overwrite)
+
+    def upgrade(self):
+        assert self.is_outdated, 'KDB object not outdated.'
+
+        if self.version == (0,0,1):
+            self.conn.execute('''ALTER TABLE metadata ADD COLUMN version;''')
+            self.conn.execute('''UPDATE metadata SET version="{0}"'''.format(version))
+            self.conn.commit()
+            all_entries = self.conn.execute('''SELECT * FROM main''').fetchall()
+            self.conn.execute('''DROP TABLE main''')
+            self.conn.commit()
+            self.conn.execute('''CREATE TABLE main (id INTEGER PRIMARY KEY AUTOINCREMENT, source TEXT, target TEXT, state TEXT, time TEXT, submitted_by TEXT)''')
+            self.conn.commit()
+            self.conn.executemany('''INSERT INTO main(source, target, time, submitted_by) VALUES (?,?,?,?)''', all_entries)
+            self.conn.commit()
+        else:
+            self.conn.execute('''UPDATE metadata SET version="{0}"'''.format(version))
+            self.conn.commit()
+
+        self.version = tuple(map(int, (version.split('-')[0].split('.'))))
+        self.is_outdated = False
