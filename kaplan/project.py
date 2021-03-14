@@ -40,7 +40,7 @@ class Project:
 
         project_tm_entries = []
         for tm_i in self.translation_memories:
-            project_tm_entries += list(KDB(self.translation_memories[tm_i]).get_all_source_entries())
+            project_tm_entries += KDB(self.translation_memories[tm_i]).get_all_source_entries()
 
         project_report = {}
         project_total = {'Repetitions': 0,

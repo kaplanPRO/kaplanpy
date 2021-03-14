@@ -126,7 +126,7 @@ class KDB:
         xliff.save(path_to_xliff.parent)
 
     def get_all_source_entries(self):
-        return self.conn.execute('''SELECT source FROM main''').fetchall()
+        return [row[0] for row in self.conn.execute('''SELECT source FROM main''').fetchall()]
 
     def get_entries(self, first_i=None, last_i=None):
         rows = self.conn.execute('''SELECT * FROM main''').fetchall()
