@@ -84,7 +84,7 @@ class Project:
                         highest_match = 0.0
                         for entry in project_entries + project_tm_entries:
                             sm.set_seq1(entry)
-                            highest_match = max(sm.quick_ratio(), highest_match)
+                            highest_match = max(sm.ratio(), highest_match)
 
                         if highest_match >= 0.95:
                             file_report['95%-99%'] += word_count
