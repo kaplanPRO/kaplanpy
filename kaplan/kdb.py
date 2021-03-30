@@ -181,7 +181,10 @@ class KDB:
         self.submit_entries(entries, overwrite)
 
     def lookup_segment(self, source_segment, diff=0.5):
-        source_segment = etree.fromstring(source_segment)
+        if isinstance(source_segment, (bytes, str)):
+            source_segment = etree.fromstring(source_segment)
+        else:
+            assert isinstance(source_segment, etree._Element), 'source_segment must be an instance of etree._Element'
         for child in source_segment:
             child.tag = etree.QName(child).localname
 
@@ -190,6 +193,8 @@ class KDB:
         reversed_tags = {}
         for k in tags:
             reversed_tags[tags[k]] = k
+
+        d = difflib.Differ()
 
         sm = difflib.SequenceMatcher()
         sm.set_seq2(source_entry)
@@ -209,10 +214,26 @@ class KDB:
                 source = self.entry_to_segment(tm_entry[0], 'source', reversed_tags, source_segment)
                 target = self.entry_to_segment(tm_entry[1], 'target', reversed_tags, source_segment)
 
+                difference = etree.Element('difference')
+                for change in d.compare(tm_entry[0], source_entry):
+                    if change[:2] == '+ ':
+                        if len(difference) == 0 or difference[-1].attrib.get('change') != 'add':
+                            change_span = etree.SubElement(difference, 'span', {'change':'add'})
+                            change_span.text = ''
+                    elif change[:2] == '- ':
+                        if len(difference) == 0 or difference[-1].attrib.get('change') != 'remove':
+                            change_span = etree.SubElement(difference, 'span', {'change':'remove'})
+                            change_span.text = ''
+                    elif change[:2] == '  ':
+                        if len(difference) == 0 or difference[-1].attrib.get('change') != 'none':
+                            change_span = etree.SubElement(difference, 'span', {'change':'none'})
+                            change_span.text = ''
+                    difference[-1].text += change[2:]
+
                 if self.version >= (0,10,0):
-                    tm_hits.append((sm.ratio(), source, target, tm_entry[2], tm_entry[3], tm_entry[4]))
+                    tm_hits.append((sm.ratio(), difference, source, target, tm_entry[2], tm_entry[3], tm_entry[4]))
                 else:
-                    tm_hits.append((sm.ratio(), source, target, None, tm_entry[2], tm_entry[3]))
+                    tm_hits.append((sm.ratio(), difference, source, target, None, tm_entry[2], tm_entry[3]))
 
         return tm_hits
 
