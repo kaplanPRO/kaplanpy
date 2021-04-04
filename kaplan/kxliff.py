@@ -1281,3 +1281,27 @@ class KXLIFF(XLIFF):
             comment.attrib['state'] = 'resolved'
         else:
             raise ValueError('Comment not found.')
+
+    def update_segment(self, target_segment, tu_i, segment_i, segment_state=None, submitted_by=None, save_history=True):
+        if save_history and (segment_state == 'translated' or segment_state == 'reviewed'):
+            tu = self.xml_root.xpath('.//xliff:unit[@id="{0}"]|unit[@id="{0}"]'.format(tu_i), namespaces=nsmap)[0]
+            segment = tu.find('xliff:segment[@id="{0}"]'.format(segment_i), namespaces=nsmap)
+            target = segment.find('xliff:target', namespaces=nsmap)
+            if target is not None and (len(target) > 0 or target.text is not None):
+                tu_history = tu.find('kaplan:history', namespaces=nsmap)
+                if tu_history is None:
+                    tu_history = etree.SubElement(tu, '{{{0}}}history'.format(nsmap['kaplan']))
+                segment_history = tu_history.find('kaplan:segment[@id="{0}"]'.format(segment_i), namespaces=nsmap)
+                if segment_history is None:
+                    segment_history = etree.SubElement(tu_history,
+                                                       '{{{0}}}segment'.format(nsmap['kaplan']),
+                                                       {'id':str(segment_i)})
+                if len(segment_history) == 0 or etree.tostring(segment_history[-1], encoding='UTF-8') != etree.tostring(target, encoding='UTF-8'):
+                    copy_target = deepcopy(target)
+                    copy_target.attrib['state'] = segment.attrib.get('state', 'N/A')
+                    copy_target.attrib['modified_on'] = segment.attrib.get('modified_on', 'N/A')
+                    copy_target.attrib['modified_by'] = segment.attrib.get('modified_by', 'N/A')
+
+                    segment_history.append(copy_target)
+
+        super().update_segment(target_segment, tu_i, segment_i, segment_state, submitted_by)
