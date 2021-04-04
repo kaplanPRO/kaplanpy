@@ -430,6 +430,17 @@ class KXLIFF(XLIFF):
         else:
             raise ValueError('Filetype incompatible for this task!')
 
+    def get_segment_history(self, segment_i):
+        segment_history = self.xml_root.find('.//kaplan:history/kaplan:segment[@id="{0}"]'.format(segment_i), self.nsmap)
+        if segment_history is not None:
+            segment_history = deepcopy(segment_history)
+            for any_child in segment_history.findall('.//'):
+                any_child.tag = any_child.tag.split('}')[-1]
+                if 'equiv' in any_child.attrib:
+                    any_child.text = any_child.attrib['equiv']
+
+        return segment_history
+
     def merge_segments(self, list_of_segments):
         '''
         Merges two segments of the same translation unit.
