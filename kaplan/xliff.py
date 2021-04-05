@@ -164,6 +164,7 @@ class XLIFF:
                 any_child.attrib['dataRef'] = any_child.attrib.pop('dataref')
 
             any_child.attrib.pop('contenteditable', None)
+            any_child.attrib.pop('draggable', None)
 
         if self.xliff_version < 2.0:
             active_g_tags = []
