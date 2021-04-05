@@ -70,7 +70,7 @@ class KXLIFF(XLIFF):
             tu_loc_quality_issues = etree.SubElement(tu,
                                                      '{{{0}}}locQualityIssues'.format(nsmap['kaplan']))
         tu_loc_quality_issue = etree.SubElement(tu_loc_quality_issues,
-                                                '{{{0}}}locQualityIssues'.format(nsmap['kaplan']),
+                                                '{{{0}}}locQualityIssue'.format(nsmap['kaplan']),
                                                 {'id': str(len(tu_loc_quality_issues)+1),
                                                  'segment': str(segment_i) if segment_i else 'N/A',
                                                  'type': issue_type,
@@ -1292,6 +1292,18 @@ class KXLIFF(XLIFF):
             comment.attrib['state'] = 'resolved'
         else:
             raise ValueError('Comment not found.')
+
+    def resolve_loc_quality_issue(self, segment_i, issue_i, author):
+        loc_quality_issue = self.xml_root.xpath('.//kaplan:locQualityIssue[@segment="{0}" and @id="{1}"]'.format(segment_i, issue_i), namespaces=nsmap)
+        if loc_quality_issue != []:
+            loc_quality_issue = loc_quality_issue[0]
+            if loc_quality_issue.attrib.get('resolved'):
+                raise ValueError('LQI already resolved.')
+            loc_quality_issue.attrib['resolved_at'] = datetime.utcnow().isoformat()
+            loc_quality_issue.attrib['resolved_by'] = author
+            loc_quality_issue.attrib['resolved'] = 'true'
+        else:
+            raise ValueError('LQI not found.')
 
     def update_segment(self, target_segment, tu_i, segment_i, segment_state=None, submitted_by=None, save_history=True):
         if save_history and (segment_state == 'translated' or segment_state == 'reviewed'):
