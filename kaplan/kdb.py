@@ -4,7 +4,7 @@ from lxml import etree
 # Standard Python libraries
 from copy import deepcopy
 import csv
-import datetime
+from datetime import datetime
 import difflib
 import html
 import pathlib
@@ -139,7 +139,7 @@ class KDB:
     def import_csv(self, path_to_csv, overwrite=True):
         entries = []
 
-        time = str(datetime.datetime.utcnow())
+        time = datetime.utcnow().isoformat()
         file_name = pathlib.Path(path_to_csv).name
 
         with open(path_to_csv, encoding='UTF-8') as csv_file:
@@ -159,7 +159,7 @@ class KDB:
     def import_xliff(self, path_to_xliff, overwrite=True):
         entries = []
 
-        time = str(datetime.datetime.utcnow())
+        time = datetime.utcnow().isoformat()
         file_name = pathlib.Path(path_to_xliff).name
 
         xliff = XLIFF.open_bilingualfile(path_to_xliff)
@@ -364,14 +364,14 @@ class KDB:
             entry = (source,
                      target,
                      state,
-                     str(datetime.datetime.utcnow()),
+                     datetime.utcnow().isoformat(),
                      submitted_by)
 
             self.conn.execute('''INSERT INTO main(source, target, state, time, submitted_by) VALUES (?,?,?,?,?)''', entry)
         else:
             entry = (source,
                      target,
-                     str(datetime.datetime.utcnow()),
+                     datetime.utcnow().isoformat(),
                      submitted_by)
 
             self.conn.execute('''INSERT INTO main(source, target, time, submitted_by) VALUES (?,?,?,?)''', entry)

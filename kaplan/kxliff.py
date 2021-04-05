@@ -4,7 +4,7 @@ import regex
 
 # Standard Python libraries
 from copy import deepcopy
-import datetime
+from datetime import datetime
 import html
 from io import BytesIO
 import os
@@ -55,7 +55,7 @@ class KXLIFF(XLIFF):
                                     {'id': str(len(notes.xpath('xliff:note', namespaces=nsmap))+1),
                                      'segment': str(segment_i),
                                      'state': 'open',
-                                     'added_at': str(datetime.datetime.utcnow()),
+                                     'added_at': datetime.utcnow().isoformat(),
                                      'added_by': author})
 
             note.text = comment
@@ -1287,7 +1287,7 @@ class KXLIFF(XLIFF):
         comment = self.xml_root.xpath('.//xliff:note[@segment="{0}" and @id="{1}"]'.format(segment_i, comment_i), namespaces=nsmap)
         if comment != []:
             comment = comment[0]
-            comment.attrib['resolved_at'] = str(datetime.datetime.utcnow())
+            comment.attrib['resolved_at'] = datetime.utcnow().isoformat()
             comment.attrib['resolved_by'] = author
             comment.attrib['state'] = 'resolved'
         else:

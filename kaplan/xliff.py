@@ -4,7 +4,7 @@ import regex
 
 # Standard Python libraries
 from copy import deepcopy
-import datetime
+from datetime import datetime
 import difflib
 import html
 from io import BytesIO
@@ -251,7 +251,7 @@ class XLIFF:
 
             if segment_state and submitted_by:
                 _segment.attrib['state'] = segment_state
-                _segment.attrib['modified_on'] = str(datetime.datetime.utcnow())
+                _segment.attrib['modified_on'] = datetime.utcnow().isoformat()
                 _segment.attrib['modified_by'] = submitted_by
 
             for any_child in _target_segment:
@@ -269,7 +269,7 @@ class XLIFF:
             _translation_unit = self.xml_root.find('.//trans-unit[@id="{0}"]'.format(tu_no), self.nsmap)
             if segment_state and submitted_by:
                 _target_segment.attrib['state'] = segment_state
-                _target_segment.attrib['modified_on'] = str(datetime.datetime.utcnow())
+                _target_segment.attrib['modified_on'] = datetime.utcnow().isoformat()
                 _target_segment.attrib['modified_by'] = submitted_by
 
             if segment_no is not None:
