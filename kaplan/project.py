@@ -2,6 +2,7 @@
 from lxml import etree
 
 # Standard Python libraries
+from datetime import datetime
 import difflib
 import json
 import os
@@ -117,7 +118,7 @@ class Project:
 
         return project_report
 
-    def export(self, target_path, files_to_export=None, include_source_and_resources=True):
+    def export(self, target_path, files_to_export=None, include_source_and_resources=True, task='translation', due_datetime=None, notes=None):
         if not target_path.lower().endswith('.kpp'):
             target_path += '.kpp'
 
@@ -126,7 +127,14 @@ class Project:
             'src': self.source_language,
             'trg': self.target_language,
             'files': {},
+            'task': task
         }
+        if due_datetime is not None:
+            if not isinstance(due_datetime, datetime):
+                due_datetime = datetime.fromisoformat(due_datetime)
+            manifest['due_datetime'] = due_datetime.isoformat()
+        if notes is not None and notes != '':
+            manifest['notes'] = notes
 
         with zipfile.ZipFile(target_path, 'w') as project_package:
             for i in self.files:
