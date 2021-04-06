@@ -63,7 +63,7 @@ class KXLIFF(XLIFF):
         else:
             raise ValueError('Segment not found.')
 
-    def add_loc_quality_issue(self, tu_i, segment_i, issue_type, issue_comment, issue_severity=1.0):
+    def add_loc_quality_issue(self, tu_i, segment_i, issue_type, issue_comment, issue_severity, author):
         tu = self.xml_root.xpath('.//xliff:unit[@id="{0}"]|unit[@id="{0}"]'.format(tu_i), namespaces=nsmap)[0]
         tu_loc_quality_issues = tu.find('kaplan:locQualityIssues', namespaces=nsmap)
         if tu_loc_quality_issues is None:
@@ -75,7 +75,9 @@ class KXLIFF(XLIFF):
                                                  'segment': str(segment_i) if segment_i else 'N/A',
                                                  'type': issue_type,
                                                  'comment': issue_comment,
-                                                 'severity': str(issue_severity)})
+                                                 'severity': str(issue_severity),
+                                                 'added_at': datetime.utcnow().isoformat(),
+                                                 'added_by': author})
 
     def generate_target_translation(self, output_directory, path_to_source_file=None):
         '''
