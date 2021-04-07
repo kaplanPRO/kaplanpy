@@ -443,6 +443,9 @@ class KXLIFF(XLIFF):
 
         return segment_history
 
+    def get_segment_lqi(self, segment_i):
+        return self.xml_root.xpath('.//kaplan:locQualityIssue[@segment="{0}"]'.format(segment_i), namespaces=nsmap)
+
     def merge_segments(self, list_of_segments):
         '''
         Merges two segments of the same translation unit.
