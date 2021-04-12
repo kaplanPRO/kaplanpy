@@ -443,8 +443,13 @@ class KXLIFF(XLIFF):
 
         return segment_history
 
-    def get_segment_lqi(self, segment_i):
-        return self.xml_root.xpath('.//kaplan:locQualityIssue[@segment="{0}"]'.format(segment_i), namespaces=nsmap)
+    def get_segment_lqi(self, segment_i, ignore_resolved=True):
+        segment_lqi = []
+        for segment_loc_quality_issue in self.xml_root.xpath('.//kaplan:locQualityIssue[@segment="{0}"]'.format(segment_i), namespaces=nsmap):
+            if ignore_resolved and segment_loc_quality_issue.attrib.get('resolved'):
+                continue
+            segment_lqi.append(deepcopy(segment_loc_quality_issue))
+        return segment_lqi
 
     def merge_segments(self, list_of_segments):
         '''
