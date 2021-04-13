@@ -4,7 +4,7 @@ import regex
 
 # Standard Python libraries
 from copy import deepcopy
-import datetime
+from datetime import datetime
 import html
 from io import BytesIO
 import os
@@ -55,13 +55,162 @@ class KXLIFF(XLIFF):
                                     {'id': str(len(notes.xpath('xliff:note', namespaces=nsmap))+1),
                                      'segment': str(segment_i),
                                      'state': 'open',
-                                     'added_at': str(datetime.datetime.utcnow()),
+                                     'added_at': datetime.utcnow().isoformat(),
                                      'added_by': author})
 
             note.text = comment
 
         else:
             raise ValueError('Segment not found.')
+
+    def add_loc_quality_issue(self, tu_i, segment_i, issue_type, issue_comment, issue_severity, author):
+        tu = self.xml_root.xpath('.//xliff:unit[@id="{0}"]|unit[@id="{0}"]'.format(tu_i), namespaces=nsmap)[0]
+        tu_loc_quality_issues = tu.find('kaplan:locQualityIssues', namespaces=nsmap)
+        if tu_loc_quality_issues is None:
+            tu_loc_quality_issues = etree.SubElement(tu,
+                                                     '{{{0}}}locQualityIssues'.format(nsmap['kaplan']))
+        tu_loc_quality_issue = etree.SubElement(tu_loc_quality_issues,
+                                                '{{{0}}}locQualityIssue'.format(nsmap['kaplan']),
+                                                {'id': str(len(tu_loc_quality_issues)+1),
+                                                 'segment': str(segment_i) if segment_i else 'N/A',
+                                                 'type': issue_type,
+                                                 'comment': issue_comment,
+                                                 'severity': str(issue_severity),
+                                                 'added_at': datetime.utcnow().isoformat(),
+                                                 'added_by': author})
+
+    def generate_lqi_report(self, output_path):
+        segments = []
+
+        for tu in self.get_translation_units():
+            for segment in tu:
+                if segment.tag.split('}')[-1] == 'ignorable':
+                    continue
+                segment_source = segment.find('source', self.nsmap)
+                segment_target = segment.find('target', self.nsmap)
+                segment_history = self.get_segment_history(segment.attrib.get('id'))
+                if segment.attrib.get('state') == 'reviewed' and segment_history is not None:
+                    segment_history = segment_history.xpath('*[@state="translated"]')
+                else:
+                    segment_history = []
+                segment_lqi = self.get_segment_lqi(segment.attrib.get('id'))
+
+                segments.append([segment.attrib.get('id', 'N/A'),
+                                 segment_source if segment_source is not None else None,
+                                 segment_history[-1] if len(segment_history) > 0 else segment_target,
+                                 segment_target if len(segment_history) > 0 else None,
+                                 segment_lqi])
+
+        report = etree.Element('html')
+        head = etree.SubElement(report, 'head')
+        etree.SubElement(head, 'meta', {'charset':'UTF-8'})
+        etree.SubElement(head, 'meta', {'name':'viewport', 'content':'width=device-width, initial-scale=1'})
+
+        title = etree.SubElement(head, 'title')
+        title.text = self.name
+
+        style = etree.SubElement(report, 'style')
+        style.text = '''
+        table {
+            border-collapse: collapse;
+            overflow-wrap: break-word;
+            table-layout: fixed;}\n
+        td {
+            border-bottom: 1px solid #c5c5c5;
+            border-right: 1px solid #c5c5c5;
+            width: 24vw;}\n
+        td div span {
+            display: block;
+            font-size: 0.8rem;
+        }\n
+        th {
+            border-bottom: 1px solid #c5c5c5;
+            border-right: 1px solid #c5c5c5;
+        }\n
+        ec, sc, ph {background-color: orangered;
+            color: #FFF;
+            cursor: pointer;
+            margin: 0 1px;
+            padding: 0 8px;
+            user-select: all;
+        }\n
+        sc {
+            border-top-left-radius: 4px;
+            border-bottom-left-radius: 4px;
+            padding: 0 4px 0 8px;
+        }\n
+        ec {
+            border-top-right-radius: 4px;
+            border-bottom-right-radius: 4px;
+            padding: 0 8px 0 4px;
+        }\n
+        ph {
+            border-radius: 4px;
+        }
+        '''
+
+        body = etree.SubElement(report, 'body', nsmap={None:nsmap['xliff']})
+
+        table = etree.SubElement(body, 'table')
+
+        tr = etree.SubElement(table, 'tr')
+
+        th = etree.SubElement(tr, 'th')
+        th.text = '#'
+
+        th = etree.SubElement(tr, 'th')
+        th.text = 'Source'
+
+        th = etree.SubElement(tr, 'th')
+        th.text = 'Translation'
+
+        th = etree.SubElement(tr, 'th')
+        th.text = 'Edited Translation'
+
+        th = etree.SubElement(tr, 'th')
+        th.text = 'Flagged LQI'
+
+        for segment in segments:
+            tr = etree.SubElement(table, 'tr')
+
+            th = etree.SubElement(tr, 'th')
+            th.text = segment[0]
+
+            td = etree.SubElement(tr, 'td')
+            if segment[1] is not None:
+                td.append(segment[1])
+            else:
+                td.text = ''
+
+            td = etree.SubElement(tr, 'td')
+            if segment[2] is not None:
+                td.append(segment[2])
+            else:
+                td.text = ''
+
+            td = etree.SubElement(tr, 'td')
+            if segment[3] is not None:
+                td.append(segment[3])
+            else:
+                td.text = ''
+
+            td = etree.SubElement(tr, 'td')
+            if len(segment[4]) > 0:
+                for issue in segment[4]:
+                    issue.tag = 'div'
+                    etree.SubElement(issue, 'span').text = datetime.fromisoformat(issue.attrib['added_at']).strftime('%Y-%m-%d %H:%M:%S') + ' UTC'
+                    etree.SubElement(issue, 'span').text = 'Flagged by: ' + issue.attrib['added_by']
+                    etree.SubElement(issue, 'span').text = 'Error: ' + issue.attrib['type']
+                    comment = issue.attrib.get('comment')
+                    if comment:
+                        etree.SubElement(issue, 'span').text = 'Comment: ' + comment
+                    td.append(issue)
+                    if issue != segment[4][-1]:
+                        etree.SubElement(td, 'hr')
+            else:
+                td.text = ''
+
+        report.getroottree().write(output_path)
 
     def generate_target_translation(self, output_directory, path_to_source_file=None):
         '''
@@ -415,6 +564,25 @@ class KXLIFF(XLIFF):
 
         else:
             raise ValueError('Filetype incompatible for this task!')
+
+    def get_segment_history(self, segment_i):
+        segment_history = self.xml_root.find('.//kaplan:history/kaplan:segment[@id="{0}"]'.format(segment_i), self.nsmap)
+        if segment_history is not None:
+            segment_history = deepcopy(segment_history)
+            for any_child in segment_history.findall('.//'):
+                any_child.tag = any_child.tag.split('}')[-1]
+                if 'equiv' in any_child.attrib:
+                    any_child.text = any_child.attrib['equiv']
+
+        return segment_history
+
+    def get_segment_lqi(self, segment_i, ignore_resolved=True):
+        segment_lqi = []
+        for segment_loc_quality_issue in self.xml_root.xpath('.//kaplan:locQualityIssue[@segment="{0}"]'.format(segment_i), namespaces=nsmap):
+            if ignore_resolved and segment_loc_quality_issue.attrib.get('resolved'):
+                continue
+            segment_lqi.append(deepcopy(segment_loc_quality_issue))
+        return segment_lqi
 
     def merge_segments(self, list_of_segments):
         '''
@@ -1262,8 +1430,44 @@ class KXLIFF(XLIFF):
         comment = self.xml_root.xpath('.//xliff:note[@segment="{0}" and @id="{1}"]'.format(segment_i, comment_i), namespaces=nsmap)
         if comment != []:
             comment = comment[0]
-            comment.attrib['resolved_at'] = str(datetime.datetime.utcnow())
+            comment.attrib['resolved_at'] = datetime.utcnow().isoformat()
             comment.attrib['resolved_by'] = author
             comment.attrib['state'] = 'resolved'
         else:
             raise ValueError('Comment not found.')
+
+    def resolve_loc_quality_issue(self, segment_i, issue_i, author):
+        loc_quality_issue = self.xml_root.xpath('.//kaplan:locQualityIssue[@segment="{0}" and @id="{1}"]'.format(segment_i, issue_i), namespaces=nsmap)
+        if loc_quality_issue != []:
+            loc_quality_issue = loc_quality_issue[0]
+            if loc_quality_issue.attrib.get('resolved'):
+                raise ValueError('LQI already resolved.')
+            loc_quality_issue.attrib['resolved_at'] = datetime.utcnow().isoformat()
+            loc_quality_issue.attrib['resolved_by'] = author
+            loc_quality_issue.attrib['resolved'] = 'true'
+        else:
+            raise ValueError('LQI not found.')
+
+    def update_segment(self, target_segment, tu_i, segment_i, segment_state=None, submitted_by=None, save_history=True):
+        if save_history and (segment_state == 'translated' or segment_state == 'reviewed'):
+            tu = self.xml_root.xpath('.//xliff:unit[@id="{0}"]|unit[@id="{0}"]'.format(tu_i), namespaces=nsmap)[0]
+            segment = tu.find('xliff:segment[@id="{0}"]'.format(segment_i), namespaces=nsmap)
+            target = segment.find('xliff:target', namespaces=nsmap)
+            if target is not None and (len(target) > 0 or target.text is not None):
+                tu_history = tu.find('kaplan:history', namespaces=nsmap)
+                if tu_history is None:
+                    tu_history = etree.SubElement(tu, '{{{0}}}history'.format(nsmap['kaplan']))
+                segment_history = tu_history.find('kaplan:segment[@id="{0}"]'.format(segment_i), namespaces=nsmap)
+                if segment_history is None:
+                    segment_history = etree.SubElement(tu_history,
+                                                       '{{{0}}}segment'.format(nsmap['kaplan']),
+                                                       {'id':str(segment_i)})
+                if len(segment_history) == 0 or etree.tostring(segment_history[-1], encoding='UTF-8') != etree.tostring(target, encoding='UTF-8'):
+                    copy_target = deepcopy(target)
+                    copy_target.attrib['state'] = segment.attrib.get('state', 'N/A')
+                    copy_target.attrib['modified_on'] = segment.attrib.get('modified_on', 'N/A')
+                    copy_target.attrib['modified_by'] = segment.attrib.get('modified_by', 'N/A')
+
+                    segment_history.append(copy_target)
+
+        super().update_segment(target_segment, tu_i, segment_i, segment_state, submitted_by)
