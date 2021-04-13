@@ -29,7 +29,11 @@ class Project:
         self.title = project_metadata['title']
         self.directory = project_metadata['directory']
         self.source_language = project_metadata['source_language']
+        self.source_language_name = project_metadata.get('source_language_name')
+        self.source_language_direction = project_metadata.get('source_language_direction')
         self.target_language = project_metadata['target_language']
+        self.target_language_name = project_metadata.get('target_language_name')
+        self.target_language_direction = project_metadata.get('target_language_direction')
         self.files = project_metadata['files']
         self.translation_memories = project_metadata.get('translation_memories', {})
         self.termbases = project_metadata.get('termbases', {})
@@ -124,11 +128,20 @@ class Project:
 
         manifest = {
             'title': self.title,
-            'src': self.source_language,
-            'trg': self.target_language,
-            'files': {},
-            'task': task
+            'src': self.source_language
         }
+        if self.source_language_name:
+            manifest['src_name'] = self.source_language_name
+        if self.source_language_direction:
+            manifest['src_dir'] = self.source_language_direction
+        manifest['trg'] = self.target_language
+        if self.target_language_name:
+            manifest['trg_name'] = self.target_language_name
+        if self.target_language_direction:
+            manifest['trg_dir'] = self.target_language_direction
+        manifest['files'] = {}
+        manifest['task'] = task
+
         if due_datetime is not None:
             if not isinstance(due_datetime, datetime):
                 due_datetime = datetime.fromisoformat(due_datetime)
