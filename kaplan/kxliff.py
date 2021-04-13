@@ -79,6 +79,139 @@ class KXLIFF(XLIFF):
                                                  'added_at': datetime.utcnow().isoformat(),
                                                  'added_by': author})
 
+    def generate_lqi_report(self, output_path):
+        segments = []
+
+        for tu in self.get_translation_units():
+            for segment in tu:
+                if segment.tag.split('}')[-1] == 'ignorable':
+                    continue
+                segment_source = segment.find('source', self.nsmap)
+                segment_target = segment.find('target', self.nsmap)
+                segment_history = self.get_segment_history(segment.attrib.get('id'))
+                if segment.attrib.get('state') == 'reviewed' and segment_history is not None:
+                    segment_history = segment_history.xpath('*[@state="translated"]')
+                else:
+                    segment_history = []
+                segment_lqi = self.get_segment_lqi(segment.attrib.get('id'))
+
+                segments.append([segment.attrib.get('id', 'N/A'),
+                                 segment_source if segment_source is not None else None,
+                                 segment_history[-1] if len(segment_history) > 0 else segment_target,
+                                 segment_target if len(segment_history) > 0 else None,
+                                 segment_lqi])
+
+        report = etree.Element('html')
+        head = etree.SubElement(report, 'head')
+        etree.SubElement(head, 'meta', {'charset':'UTF-8'})
+        etree.SubElement(head, 'meta', {'name':'viewport', 'content':'width=device-width, initial-scale=1'})
+
+        title = etree.SubElement(head, 'title')
+        title.text = self.name
+
+        style = etree.SubElement(report, 'style')
+        style.text = '''
+        table {
+            border-collapse: collapse;
+            overflow-wrap: break-word;
+            table-layout: fixed;}\n
+        td {
+            border-bottom: 1px solid #c5c5c5;
+            border-right: 1px solid #c5c5c5;
+            width: 24vw;}\n
+        td div span {
+            display: block;
+            font-size: 0.8rem;
+        }\n
+        th {
+            border-bottom: 1px solid #c5c5c5;
+            border-right: 1px solid #c5c5c5;
+        }\n
+        ec, sc, ph {background-color: orangered;
+            color: #FFF;
+            cursor: pointer;
+            margin: 0 1px;
+            padding: 0 8px;
+            user-select: all;
+        }\n
+        sc {
+            border-top-left-radius: 4px;
+            border-bottom-left-radius: 4px;
+            padding: 0 4px 0 8px;
+        }\n
+        ec {
+            border-top-right-radius: 4px;
+            border-bottom-right-radius: 4px;
+            padding: 0 8px 0 4px;
+        }\n
+        ph {
+            border-radius: 4px;
+        }
+        '''
+
+        body = etree.SubElement(report, 'body', nsmap={None:nsmap['xliff']})
+
+        table = etree.SubElement(body, 'table')
+
+        tr = etree.SubElement(table, 'tr')
+
+        th = etree.SubElement(tr, 'th')
+        th.text = '#'
+
+        th = etree.SubElement(tr, 'th')
+        th.text = 'Source'
+
+        th = etree.SubElement(tr, 'th')
+        th.text = 'Translation'
+
+        th = etree.SubElement(tr, 'th')
+        th.text = 'Edited Translation'
+
+        th = etree.SubElement(tr, 'th')
+        th.text = 'Flagged LQI'
+
+        for segment in segments:
+            tr = etree.SubElement(table, 'tr')
+
+            th = etree.SubElement(tr, 'th')
+            th.text = segment[0]
+
+            td = etree.SubElement(tr, 'td')
+            if segment[1] is not None:
+                td.append(segment[1])
+            else:
+                td.text = ''
+
+            td = etree.SubElement(tr, 'td')
+            if segment[2] is not None:
+                td.append(segment[2])
+            else:
+                td.text = ''
+
+            td = etree.SubElement(tr, 'td')
+            if segment[3] is not None:
+                td.append(segment[3])
+            else:
+                td.text = ''
+
+            td = etree.SubElement(tr, 'td')
+            if len(segment[4]) > 0:
+                for issue in segment[4]:
+                    issue.tag = 'div'
+                    etree.SubElement(issue, 'span').text = datetime.fromisoformat(issue.attrib['added_at']).strftime('%Y-%m-%d %H:%M:%S') + ' UTC'
+                    etree.SubElement(issue, 'span').text = 'Flagged by: ' + issue.attrib['added_by']
+                    etree.SubElement(issue, 'span').text = 'Error: ' + issue.attrib['type']
+                    comment = issue.attrib.get('comment')
+                    if comment:
+                        etree.SubElement(issue, 'span').text = 'Comment: ' + comment
+                    td.append(issue)
+                    if issue != segment[4][-1]:
+                        etree.SubElement(td, 'hr')
+            else:
+                td.text = ''
+
+        report.getroottree().write(output_path)
+
     def generate_target_translation(self, output_directory, path_to_source_file=None):
         '''
         Generates a "clean" target file.
