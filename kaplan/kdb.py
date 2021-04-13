@@ -97,7 +97,7 @@ class KDB:
 
         tu_i = 1
 
-        for kdb_entry in self.conn.execute('''SELECT * FROM main''').fetchall():
+        for kdb_entry in self.conn.execute('''SELECT source, target FROM main''').fetchall():
             if kdb_entry[0] == '' or kdb_entry[1] == '':
                 continue
             translation_unit = etree.SubElement(translation_units,
