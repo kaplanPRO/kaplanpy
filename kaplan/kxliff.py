@@ -643,7 +643,7 @@ class KXLIFF(XLIFF):
             translation_unit.remove(segment)
 
     @classmethod
-    def new(cls, source_file, src, trgt):
+    def new(cls, source_file, src, trgt, segmentation='default'):
         '''
         Takes in a source file and returns a KXLIFF instance.
 
@@ -651,6 +651,9 @@ class KXLIFF(XLIFF):
             source_file: Path to a source file.
             src: ISO 639-1 code for the source language.
             trgt: ISO 639-1 code for the target language.
+            segmentation: Sets whether kaplan should split translation units
+                          into sentences. This should be either set to False or
+                          left as 'default' for bilingual files (eg. .po files).
         '''
 
         name = os.path.basename(source_file)
@@ -1077,6 +1080,11 @@ class KXLIFF(XLIFF):
                     _target.text = entry.get('msgstr[1]', '')
 
                     _tu.attrib['keys'] = ';'.join((_source_key, 'msgstr[1]'))
+
+            if segmentation == 'default' or not segmentation:
+                for tu in source_file_reference.findall('xliff:unit', nsmap):
+                    tu[0].attrib['id'] = tu.attrib['id']
+                return cls(name + '.kxliff', xml_root)
 
         elif name.lower().endswith('.txt'):
 
