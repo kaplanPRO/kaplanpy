@@ -31,9 +31,7 @@ class XLIFF:
         self.xliff_version = float(self.xml_root.attrib['version'])
         self.nsmap = self.xml_root.nsmap
 
-    def get_translation_units(self, include_segments_wo_id=True):
-
-        translation_units = etree.Element('translation-units')
+    def gen_translation_units(self, include_segments_wo_id=True):
 
         if self.xliff_version >= 2.0:
             for translation_unit in self.xml_root.findall('.//unit', self.nsmap):
@@ -55,7 +53,9 @@ class XLIFF:
                         if len(segment_notes) > 0:
                             _segment.append(segment_notes)
 
-                translation_units.append(_translation_unit)
+                etree.cleanup_namespaces(_translation_unit)
+
+                yield _translation_unit
         else:
             for translation_unit in self.xml_root.findall('.//trans-unit', self.nsmap):
                 segments = []
@@ -118,9 +118,16 @@ class XLIFF:
                             else:
                                 _any_child.text = '<{0}-{1}/>'.format(etree.QName(_any_child).localname, _any_child.attrib.get('id', 'N/A'))
 
-                translation_units.append(_translation_unit)
+                etree.cleanup_namespaces(_translation_unit)
 
-        etree.cleanup_namespaces(translation_units)
+                yield _translation_unit
+
+    def get_translation_units(self, include_segments_wo_id=True):
+
+        translation_units = etree.Element('translation-units')
+
+        for translation_unit in self.gen_translation_units(include_segments_wo_id):
+            translation_units.append(translation_unit)
 
         return translation_units
 
