@@ -38,6 +38,7 @@ class XLIFF:
                 _translation_unit = deepcopy(translation_unit)
                 _translation_unit.tag = 'translation-unit'
                 _tu_notes = _translation_unit.find('notes', self.nsmap)
+                _tu_lqi = _translation_unit.find('kaplan:locQualityIssues', {'kaplan':self.nsmap.get('kaplan',None)})
                 for _child in _translation_unit:
                     if not _child.tag.endswith(('}segment', '}ignorable')):
                         _translation_unit.remove(_child)
@@ -45,14 +46,25 @@ class XLIFF:
                     if 'equiv' in _any_child.attrib:
                         _any_child.text = html.unescape(_any_child.attrib['equiv'])
 
-                if _tu_notes is not None:
+                if _tu_notes is not None or _tu_lqi is not None:
                     for _segment in _translation_unit.findall('segment', self.nsmap):
-                        segment_notes = etree.Element('notes')
-                        for note in _tu_notes.xpath('xliff:note[@state="open" and @segment="{0}"]'.format(_segment.attrib.get('id')), namespaces={'xliff': self.nsmap[None]}):
-                            segment_notes.append(note)
-                        if len(segment_notes) > 0:
-                            _segment.append(segment_notes)
-
+                        segment_misc = []
+                        if _tu_notes is not None:
+                            for note in _tu_notes.xpath('xliff:note[@state="open" and @segment="{0}"]'.format(_segment.attrib.get('id')), namespaces={'xliff': self.nsmap[None]}):
+                                segment_misc.append((datetime.fromisoformat(note.attrib.get('added_at')), note))
+                        if _tu_lqi is not None:
+                            for lqi in _tu_lqi.xpath('kaplan:locQualityIssue[@segment="{0}"]'.format(_segment.attrib.get('id')), namespaces={'kaplan':self.nsmap.get('kaplan', None)}):
+                                if lqi.attrib.get('resolved'):
+                                    continue
+                                lqi.tag = 'lqi'
+                                segment_misc.append((datetime.fromisoformat(lqi.attrib.get('added_at')), lqi))
+                        if len(segment_misc) > 0:
+                            _segment_misc = etree.Element('misc')
+                            for time, misc in sorted(segment_misc):
+                                if misc.text is None:
+                                    misc.text = ''
+                                _segment_misc.append(misc)
+                            _segment.append(_segment_misc)
                 etree.cleanup_namespaces(_translation_unit)
 
                 yield _translation_unit
