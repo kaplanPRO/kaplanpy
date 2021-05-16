@@ -31,15 +31,14 @@ class XLIFF:
         self.xliff_version = float(self.xml_root.attrib['version'])
         self.nsmap = self.xml_root.nsmap
 
-    def get_translation_units(self, include_segments_wo_id=True):
-
-        translation_units = etree.Element('translation-units')
+    def gen_translation_units(self, include_segments_wo_id=True):
 
         if self.xliff_version >= 2.0:
             for translation_unit in self.xml_root.findall('.//unit', self.nsmap):
                 _translation_unit = deepcopy(translation_unit)
                 _translation_unit.tag = 'translation-unit'
                 _tu_notes = _translation_unit.find('notes', self.nsmap)
+                _tu_lqi = _translation_unit.find('kaplan:locQualityIssues', {'kaplan':self.nsmap.get('kaplan',None)})
                 for _child in _translation_unit:
                     if not _child.tag.endswith(('}segment', '}ignorable')):
                         _translation_unit.remove(_child)
@@ -47,15 +46,28 @@ class XLIFF:
                     if 'equiv' in _any_child.attrib:
                         _any_child.text = html.unescape(_any_child.attrib['equiv'])
 
-                if _tu_notes is not None:
+                if _tu_notes is not None or _tu_lqi is not None:
                     for _segment in _translation_unit.findall('segment', self.nsmap):
-                        segment_notes = etree.Element('notes')
-                        for note in _tu_notes.xpath('xliff:note[@state="open" and @segment="{0}"]'.format(_segment.attrib.get('id')), namespaces={'xliff': self.nsmap[None]}):
-                            segment_notes.append(note)
-                        if len(segment_notes) > 0:
-                            _segment.append(segment_notes)
+                        segment_misc = []
+                        if _tu_notes is not None:
+                            for note in _tu_notes.xpath('xliff:note[@state="open" and @segment="{0}"]'.format(_segment.attrib.get('id')), namespaces={'xliff': self.nsmap[None]}):
+                                segment_misc.append((datetime.fromisoformat(note.attrib.get('added_at')), note))
+                        if _tu_lqi is not None:
+                            for lqi in _tu_lqi.xpath('kaplan:locQualityIssue[@segment="{0}"]'.format(_segment.attrib.get('id')), namespaces={'kaplan':self.nsmap.get('kaplan', None)}):
+                                if lqi.attrib.get('resolved'):
+                                    continue
+                                lqi.tag = 'lqi'
+                                segment_misc.append((datetime.fromisoformat(lqi.attrib.get('added_at')), lqi))
+                        if len(segment_misc) > 0:
+                            _segment_misc = etree.Element('misc')
+                            for time, misc in sorted(segment_misc):
+                                if misc.text is None:
+                                    misc.text = ''
+                                _segment_misc.append(misc)
+                            _segment.append(_segment_misc)
+                etree.cleanup_namespaces(_translation_unit)
 
-                translation_units.append(_translation_unit)
+                yield _translation_unit
         else:
             for translation_unit in self.xml_root.findall('.//trans-unit', self.nsmap):
                 segments = []
@@ -118,9 +130,16 @@ class XLIFF:
                             else:
                                 _any_child.text = '<{0}-{1}/>'.format(etree.QName(_any_child).localname, _any_child.attrib.get('id', 'N/A'))
 
-                translation_units.append(_translation_unit)
+                etree.cleanup_namespaces(_translation_unit)
 
-        etree.cleanup_namespaces(translation_units)
+                yield _translation_unit
+
+    def get_translation_units(self, include_segments_wo_id=True):
+
+        translation_units = etree.Element('translation-units')
+
+        for translation_unit in self.gen_translation_units(include_segments_wo_id):
+            translation_units.append(translation_unit)
 
         return translation_units
 
