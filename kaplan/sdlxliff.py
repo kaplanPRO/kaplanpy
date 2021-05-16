@@ -13,16 +13,23 @@ class SDLXLIFF(XLIFF):
             raise TypeError('This class may only handle .sdlxliff files.')
         super().__init__(name, xml_root)
 
-    def get_translation_units(self, include_segments_wo_id=False):
-        translation_units = super().get_translation_units(include_segments_wo_id)
-        for tu in translation_units:
-            for segment in tu:
-                if not segment.attrib.get('id') != 'N/A':
+    def gen_translation_units(self, include_segments_wo_id=False):
+        for translation_unit in super().gen_translation_units(include_segments_wo_id):
+            for segment in translation_unit:
+                if not include_segments_wo_id and segment.attrib.get('id') == 'N/A':
                     continue
                 seg_defs = self.xml_root.xpath('.//sdl:seg-defs/sdl:seg[@id="{0}"]'.format(segment.attrib['id']), namespaces={'sdl':self.nsmap['sdl']})[0]
                 segment_state = seg_defs.attrib.get('conf', None)
                 if segment_state is not None:
                     segment.attrib['state'] = segment_state.lower()
+
+            yield translation_unit
+
+    def get_translation_units(self, include_segments_wo_id=False):
+        translation_units = etree.Element('translation-units')
+
+        for translation_unit in self.gen_translation_units(include_segments_wo_id):
+            translation_units.append(translation_unit)
 
         return translation_units
 
