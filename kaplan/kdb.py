@@ -12,7 +12,7 @@ import regex
 import sqlite3
 
 # Internal Python files
-from .version import __version__ as version
+from kaplan import __version__ as version
 from .xliff import XLIFF
 
 class KDB:

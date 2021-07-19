@@ -1,4 +1,4 @@
-from .version import __version__
+__version__ = '0.12.0'
 
 def can_process(input_file):
     '''
