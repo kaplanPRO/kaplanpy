@@ -212,7 +212,7 @@ class KXLIFF(XLIFF):
 
         report.getroottree().write(output_path)
 
-    def generate_target_translation(self, output_directory, path_to_source_file=None):
+    def generate_target_translation(self, output_directory, path_to_source_file=None, target_filename=None):
         '''
         Generates a "clean" target file.
 
@@ -225,7 +225,14 @@ class KXLIFF(XLIFF):
             raise TypeError('Function only available for .kxliff files.')
 
         source_file = self.xml_root.find('file', self.nsmap)
-        source_filename = os.path.basename(source_file.attrib['original'])
+
+        if path_to_source_file is None:
+            path_to_source_file = source_file.attrib['original']
+
+        source_filename = os.path.basename(path_to_source_file)
+
+        if target_filename is None:
+            target_filename = source_filename
 
         if source_filename.lower().endswith('.docx'):
             source_nsmap = source_file[0][0].nsmap
@@ -347,13 +354,10 @@ class KXLIFF(XLIFF):
                     paragraph_parent.insert(child_i, target_child)
                     child_i += 1
 
-            temp_dir = os.path.join(output_directory, ('.temp' + source_filename))
+            temp_dir = os.path.join(output_directory, ('.temp' + target_filename))
 
             if os.path.exists(temp_dir):
                 remove_dir(temp_dir)
-
-            if path_to_source_file is None:
-                path_to_source_file = source_file.attrib['original']
 
             with zipfile.ZipFile(path_to_source_file) as source_zip:
                 source_zip.extractall(temp_dir)
@@ -368,7 +372,7 @@ class KXLIFF(XLIFF):
                 for file_in_transit in files:
                     to_zip.append(os.path.join(root, file_in_transit))
 
-            with zipfile.ZipFile(os.path.join(output_directory, source_filename), 'w') as target_zip:
+            with zipfile.ZipFile(os.path.join(output_directory, target_filename), 'w') as target_zip:
                 for path_to_file in to_zip:
                     target_zip.write(path_to_file, path_to_file[len(temp_dir):])
 
@@ -479,13 +483,10 @@ class KXLIFF(XLIFF):
                     placeholder_parent.insert(placeholder_i, child)
                     placeholder_i += 1
 
-            temp_dir = os.path.join(output_directory, ('.temp' + source_filename))
+            temp_dir = os.path.join(output_directory, ('.temp' + target_filename))
 
             if os.path.exists(temp_dir):
                 remove_dir(temp_dir)
-
-            if path_to_source_file is None:
-                path_to_source_file = source_file.attrib['original']
 
             with zipfile.ZipFile(path_to_source_file) as source_zip:
                 source_zip.extractall(temp_dir)
@@ -500,7 +501,7 @@ class KXLIFF(XLIFF):
                 for file_in_transit in files:
                     to_zip.append(os.path.join(root, file_in_transit))
 
-            with zipfile.ZipFile(os.path.join(output_directory, source_filename), 'w') as target_zip:
+            with zipfile.ZipFile(os.path.join(output_directory, target_filename), 'w') as target_zip:
                 for path_to_file in to_zip:
                     target_zip.write(path_to_file, path_to_file[len(temp_dir):])
 
@@ -540,7 +541,7 @@ class KXLIFF(XLIFF):
                     po_entries[po_id][1].append('{0} {1}'.format(keys[0], '\n'.join(segment[0])))
                     po_entries[po_id][2].append('{0} {1}'.format(keys[1], '\n'.join(segment[1])))
 
-            with open(os.path.join(output_directory, source_filename), 'w') as outfile:
+            with open(os.path.join(output_directory, target_filename), 'w') as outfile:
                 outfile.write(source_file.find('kaplan:internal-file', self.nsmap).text + '\n')
 
                 for po_entry_i in sorted(po_entries):
@@ -552,7 +553,7 @@ class KXLIFF(XLIFF):
                         outfile.write('\n')
 
         elif source_filename.lower().endswith('.txt'):
-            with open(os.path.join(output_directory, source_filename), 'w') as outfile:
+            with open(os.path.join(output_directory, target_filename), 'w') as outfile:
                 for trans_unit in source_file.findall('.//unit', self.nsmap):
                     for segment in trans_unit.xpath('.//xliff:segment|.//xliff:ignorable', namespaces={'xliff':self.nsmap[None]}):
                         target = segment.find('target', self.nsmap)
