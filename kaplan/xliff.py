@@ -32,7 +32,9 @@ class XLIFF:
         self.nsmap = self.xml_root.nsmap
 
     def gen_translation_units(self, include_segments_wo_id=True):
-
+        '''
+        Returns a Python generator object containing translation units.
+        '''
         if self.xliff_version >= 2.0:
             for translation_unit in self.xml_root.findall('.//unit', self.nsmap):
                 _translation_unit = deepcopy(translation_unit)
@@ -135,7 +137,9 @@ class XLIFF:
                 yield _translation_unit
 
     def get_translation_units(self, include_segments_wo_id=True):
-
+        '''
+        Returns a list of all translation units.
+        '''
         translation_units = etree.Element('translation-units')
 
         for translation_unit in self.gen_translation_units(include_segments_wo_id):
@@ -148,6 +152,9 @@ class XLIFF:
 
     @classmethod
     def open_bilingualfile(cls, bilingualfile):
+        '''
+        Opens an .xliff file.
+        '''
         xml_root = etree.parse(bilingualfile).getroot()
         if isinstance(bilingualfile, BytesIO):
             name = bilingualfile.name
@@ -157,13 +164,16 @@ class XLIFF:
         return cls(name, xml_root)
 
     def save(self, output_directory):
+        '''
+        Saves the bilingual file in a given directory.
+        '''
         self.xml_root.getroottree().write(os.path.join(output_directory, self.name),
                                           encoding='UTF-8',
                                           xml_declaration=True)
 
     def update_segment(self, target_segment, tu_no, segment_no=None, segment_state=None, submitted_by=None):
         '''
-        Updates a given segment.
+        Updates a target segment.
 
         Args:
             target_segment (str): Target segment in HTML.

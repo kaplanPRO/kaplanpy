@@ -40,6 +40,9 @@ class Project:
         self.reports = project_metadata.get('reports', {})
 
     def analyze(self):
+        '''
+        Returns an analysis report for the project.
+        '''
 
         project_entries = []
 
@@ -123,6 +126,9 @@ class Project:
         return project_report
 
     def export(self, target_path, files_to_export=None, include_source_and_resources=True, task='translation', due_datetime=None, notes=None):
+        '''
+        Exports the project as a package that can be imported.
+        '''
         if not target_path.lower().endswith('.kpp'):
             target_path += '.kpp'
 
@@ -205,6 +211,9 @@ class Project:
 
     @staticmethod
     def extract(project_package, project_directory):
+        '''
+        Extracts a project package.
+        '''
         with zipfile.ZipFile(project_package) as project_package:
             manifest = json.loads(project_package.read('manifest.json'))
 
@@ -227,6 +236,9 @@ class Project:
 
     @staticmethod
     def extract_target_files(project_package, project_directory, project_files):
+        '''
+        Extracts target files from a project package.
+        '''
         with zipfile.ZipFile(project_package) as project_package:
             manifest = json.loads(project_package.read('manifest.json'))
 
@@ -236,6 +248,9 @@ class Project:
 
     @staticmethod
     def get_manifest(project_package):
+        '''
+        Returns the project manifest from a package.
+        '''
         with zipfile.ZipFile(project_package) as project_package:
             manifest = json.loads(project_package.read('manifest.json'))
 

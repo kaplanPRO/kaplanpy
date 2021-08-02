@@ -1,6 +1,6 @@
 import setuptools
 
-from kaplan.version import __version__
+from kaplan import __version__
 
 with open('README.md', 'r') as input_file:
     long_description = input_file.read()

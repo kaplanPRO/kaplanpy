@@ -39,6 +39,9 @@ class KXLIFF(XLIFF):
         super().__init__(name, xml_root)
 
     def add_comment(self, segment_i, comment, author):
+        '''
+        Adds a segment-level comment.
+        '''
         segment = self.xml_root.xpath('.//xliff:segment[@id="{0}"]|segment[@id="{0}"]'.format(segment_i), namespaces=nsmap)
 
         if segment != []:
@@ -64,6 +67,9 @@ class KXLIFF(XLIFF):
             raise ValueError('Segment not found.')
 
     def add_loc_quality_issue(self, tu_i, segment_i, issue_type, issue_comment, issue_severity, author):
+        '''
+        Adds a segment-level localization quality flag.
+        '''
         tu = self.xml_root.xpath('.//xliff:unit[@id="{0}"]|unit[@id="{0}"]'.format(tu_i), namespaces=nsmap)[0]
         tu_loc_quality_issues = tu.find('kaplan:locQualityIssues', namespaces=nsmap)
         if tu_loc_quality_issues is None:
@@ -80,6 +86,9 @@ class KXLIFF(XLIFF):
                                                  'added_by': author})
 
     def generate_lqi_report(self, output_path):
+        '''
+        Generates a localization quality issue report.
+        '''
         segments = []
 
         for tu in self.get_translation_units():
@@ -212,20 +221,31 @@ class KXLIFF(XLIFF):
 
         report.getroottree().write(output_path)
 
-    def generate_target_translation(self, output_directory, path_to_source_file=None):
+    def generate_target_translation(self, output_directory, path_to_source_file=None, target_filename=None):
         '''
         Generates a "clean" target file.
 
         Args:
             output_directory: Path to target directory where the target file will be saved.
-            source_file (optional): Path to source file (Required for file types such as .docx, .odt, etc.).
+            path_to_source_file (optional): Path to source file (Defaults to the
+                                            file path saved when creating the
+                                            .kxliff file).
+            target_filename (optional): Name for the target file (Defaults to the
+                                        name of the source file).
 
         '''
         if not self.name.endswith('.kxliff'):
             raise TypeError('Function only available for .kxliff files.')
 
         source_file = self.xml_root.find('file', self.nsmap)
-        source_filename = os.path.basename(source_file.attrib['original'])
+
+        if path_to_source_file is None:
+            path_to_source_file = source_file.attrib['original']
+
+        source_filename = os.path.basename(path_to_source_file)
+
+        if target_filename is None:
+            target_filename = source_filename
 
         if source_filename.lower().endswith('.docx'):
             source_nsmap = source_file[0][0].nsmap
@@ -284,8 +304,6 @@ class KXLIFF(XLIFF):
                             for active_tag in active_tags:
                                 if active_tag[0] == target_child.attrib['id']:
                                     removed_element = etree.fromstring(original_data.find('data[@id="{0}"]'.format(active_tag[1]), self.nsmap).text)
-                                    if removed_element is not None:
-                                        break
                                     if last_parent is not None and removed_element.tag == last_parent.tag:
                                         last_parent = None
                                     if last_run is not None and removed_element.tag == last_run.tag:
@@ -347,13 +365,10 @@ class KXLIFF(XLIFF):
                     paragraph_parent.insert(child_i, target_child)
                     child_i += 1
 
-            temp_dir = os.path.join(output_directory, ('.temp' + source_filename))
+            temp_dir = os.path.join(output_directory, ('.temp' + target_filename))
 
             if os.path.exists(temp_dir):
                 remove_dir(temp_dir)
-
-            if path_to_source_file is None:
-                path_to_source_file = source_file.attrib['original']
 
             with zipfile.ZipFile(path_to_source_file) as source_zip:
                 source_zip.extractall(temp_dir)
@@ -368,7 +383,7 @@ class KXLIFF(XLIFF):
                 for file_in_transit in files:
                     to_zip.append(os.path.join(root, file_in_transit))
 
-            with zipfile.ZipFile(os.path.join(output_directory, source_filename), 'w') as target_zip:
+            with zipfile.ZipFile(os.path.join(output_directory, target_filename), 'w') as target_zip:
                 for path_to_file in to_zip:
                     target_zip.write(path_to_file, path_to_file[len(temp_dir):])
 
@@ -479,13 +494,10 @@ class KXLIFF(XLIFF):
                     placeholder_parent.insert(placeholder_i, child)
                     placeholder_i += 1
 
-            temp_dir = os.path.join(output_directory, ('.temp' + source_filename))
+            temp_dir = os.path.join(output_directory, ('.temp' + target_filename))
 
             if os.path.exists(temp_dir):
                 remove_dir(temp_dir)
-
-            if path_to_source_file is None:
-                path_to_source_file = source_file.attrib['original']
 
             with zipfile.ZipFile(path_to_source_file) as source_zip:
                 source_zip.extractall(temp_dir)
@@ -500,7 +512,7 @@ class KXLIFF(XLIFF):
                 for file_in_transit in files:
                     to_zip.append(os.path.join(root, file_in_transit))
 
-            with zipfile.ZipFile(os.path.join(output_directory, source_filename), 'w') as target_zip:
+            with zipfile.ZipFile(os.path.join(output_directory, target_filename), 'w') as target_zip:
                 for path_to_file in to_zip:
                     target_zip.write(path_to_file, path_to_file[len(temp_dir):])
 
@@ -540,7 +552,7 @@ class KXLIFF(XLIFF):
                     po_entries[po_id][1].append('{0} {1}'.format(keys[0], '\n'.join(segment[0])))
                     po_entries[po_id][2].append('{0} {1}'.format(keys[1], '\n'.join(segment[1])))
 
-            with open(os.path.join(output_directory, source_filename), 'w') as outfile:
+            with open(os.path.join(output_directory, target_filename), 'w') as outfile:
                 outfile.write(source_file.find('kaplan:internal-file', self.nsmap).text + '\n')
 
                 for po_entry_i in sorted(po_entries):
@@ -552,7 +564,7 @@ class KXLIFF(XLIFF):
                         outfile.write('\n')
 
         elif source_filename.lower().endswith('.txt'):
-            with open(os.path.join(output_directory, source_filename), 'w') as outfile:
+            with open(os.path.join(output_directory, target_filename), 'w') as outfile:
                 for trans_unit in source_file.findall('.//unit', self.nsmap):
                     for segment in trans_unit.xpath('.//xliff:segment|.//xliff:ignorable', namespaces={'xliff':self.nsmap[None]}):
                         target = segment.find('target', self.nsmap)
@@ -566,6 +578,9 @@ class KXLIFF(XLIFF):
             raise ValueError('Filetype incompatible for this task!')
 
     def get_segment_history(self, segment_i):
+        '''
+        Returns the version history of a segment.
+        '''
         segment_history = self.xml_root.find('.//kaplan:history/kaplan:segment[@id="{0}"]'.format(segment_i), self.nsmap)
         if segment_history is not None:
             segment_history = deepcopy(segment_history)
@@ -577,6 +592,13 @@ class KXLIFF(XLIFF):
         return segment_history
 
     def get_segment_lqi(self, segment_i, ignore_resolved=True):
+        '''
+        Returns the localization quality issues (LQIs) for a segment.
+
+        Args:
+            segment_i: Segment ID
+            ignore_resolved: Specified whether resolved LQIs will be ignored.
+        '''
         segment_lqi = []
         for segment_loc_quality_issue in self.xml_root.xpath('.//kaplan:locQualityIssue[@segment="{0}"]'.format(segment_i), namespaces=nsmap):
             if ignore_resolved and segment_loc_quality_issue.attrib.get('resolved'):
@@ -653,13 +675,19 @@ class KXLIFF(XLIFF):
             trgt: ISO 639-1 code for the target language.
             segmentation: Sets whether kaplan should split translation units
                           into sentences. This should be either set to False or
-                          left as 'default' for bilingual files (eg. .po files).
+                          left as is for .po files where segments are
+                          already translated.
         '''
 
         name = os.path.basename(source_file)
 
         if name.lower().endswith(('.kxliff', '.sdlxliff', '.xliff')):
-            return cls(source_file)
+            raise TypeError('This function cannot handle .xliff variants. '
+                            'Call either kaplan.open_bilingualfile, '
+                            'kaplan.kxliff.KXLIFF.open_bilingualfile, '
+                            'kaplan.xliff.XLIFF.open_bilingualfile, or '
+                            'kaplan.sdlxliff.SDLXLIFF.open_bilingualfile instead.'
+                           )
 
         _segment_counter = 1
         _tu_counter = 1
@@ -1081,10 +1109,8 @@ class KXLIFF(XLIFF):
 
                     _tu.attrib['keys'] = ';'.join((_source_key, 'msgstr[1]'))
 
-            if segmentation == 'default' or not segmentation:
-                for tu in source_file_reference.findall('xliff:unit', nsmap):
-                    tu[0].attrib['id'] = tu.attrib['id']
-                return cls(name + '.kxliff', xml_root)
+            if segmentation == 'default':
+                segmentation = False
 
         elif name.lower().endswith('.txt'):
 
@@ -1102,6 +1128,13 @@ class KXLIFF(XLIFF):
                         _tu[0].remove(_target)
 
                     _source.text = line
+
+        if not segmentation:
+            for tu in source_file_reference.findall('xliff:unit', nsmap):
+                segment = tu.find('xliff:segment', nsmap)
+                if segment is not None:
+                    segment.attrib['id'] = tu.attrib['id']
+            return cls(name + '.kxliff', xml_root)
 
         _regex = (regex.compile(r'(\s+|^)'
                                 r'(\p{Lu}\p{L}{0,3})'
@@ -1143,7 +1176,7 @@ class KXLIFF(XLIFF):
                                             1)
 
             for hit in regex.findall(_regex[1], source_text):
-                if hit is not None:
+                if hit is not None and hit[-1] != '':
                     source_text = regex.sub(regex.escape(''.join(hit)),
                                             ''.join((hit[0],
                                                      hit[1],
@@ -1435,6 +1468,9 @@ class KXLIFF(XLIFF):
         return cls(name + '.kxliff', xml_root)
 
     def resolve_comment(self, segment_i, comment_i, author):
+        '''
+        Marks a comment resolved.
+        '''
         comment = self.xml_root.xpath('.//xliff:note[@segment="{0}" and @id="{1}"]'.format(segment_i, comment_i), namespaces=nsmap)
         if comment != []:
             comment = comment[0]
@@ -1445,6 +1481,14 @@ class KXLIFF(XLIFF):
             raise ValueError('Comment not found.')
 
     def resolve_loc_quality_issue(self, segment_i, issue_i, author):
+        '''
+        Marks a localization quality issue (LQI) resolved.
+
+        Args:
+            segment_i: Segment ID
+            issue_i: LQI ID
+            author: Username or name of the individual resolving the LQI
+        '''
         loc_quality_issue = self.xml_root.xpath('.//kaplan:locQualityIssue[@segment="{0}" and @id="{1}"]'.format(segment_i, issue_i), namespaces=nsmap)
         if loc_quality_issue != []:
             loc_quality_issue = loc_quality_issue[0]
@@ -1457,6 +1501,9 @@ class KXLIFF(XLIFF):
             raise ValueError('LQI not found.')
 
     def update_segment(self, target_segment, tu_i, segment_i, segment_state=None, submitted_by=None, save_history=True):
+        '''
+        Updates a target segment.
+        '''
         if save_history and (segment_state == 'translated' or segment_state == 'reviewed'):
             tu = self.xml_root.xpath('.//xliff:unit[@id="{0}"]|unit[@id="{0}"]'.format(tu_i), namespaces=nsmap)[0]
             segment = tu.find('xliff:segment[@id="{0}"]'.format(segment_i), namespaces=nsmap)

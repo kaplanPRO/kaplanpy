@@ -14,6 +14,9 @@ class SDLXLIFF(XLIFF):
         super().__init__(name, xml_root)
 
     def gen_translation_units(self, include_segments_wo_id=False):
+        '''
+        Returns a Python generator object containing translation units.
+        '''
         for translation_unit in super().gen_translation_units(include_segments_wo_id):
             for segment in translation_unit:
                 if not include_segments_wo_id and segment.attrib.get('id') == 'N/A':
@@ -26,6 +29,9 @@ class SDLXLIFF(XLIFF):
             yield translation_unit
 
     def get_translation_units(self, include_segments_wo_id=False):
+        '''
+        Returns a list of all translation units.
+        '''
         translation_units = etree.Element('translation-units')
 
         for translation_unit in self.gen_translation_units(include_segments_wo_id):
@@ -34,6 +40,9 @@ class SDLXLIFF(XLIFF):
         return translation_units
 
     def update_segment(self, target_segment, tu_no, segment_no, segment_state, submitted_by):
+        '''
+        Updates a target segment.
+        '''
         super().update_segment(target_segment, tu_no, segment_no)
 
         if segment_no is None:
