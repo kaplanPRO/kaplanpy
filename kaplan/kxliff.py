@@ -658,7 +658,12 @@ class KXLIFF(XLIFF):
         name = os.path.basename(source_file)
 
         if name.lower().endswith(('.kxliff', '.sdlxliff', '.xliff')):
-            return cls(source_file)
+            raise TypeError('This function cannot handle .xliff variants. '
+                            'Call either kaplan.open_bilingualfile, '
+                            'kaplan.kxliff.KXLIFF.open_bilingualfile, '
+                            'kaplan.xliff.XLIFF.open_bilingualfile, or '
+                            'kaplan.sdlxliff.SDLXLIFF.open_bilingualfile instead.'
+                           )
 
         _segment_counter = 1
         _tu_counter = 1
