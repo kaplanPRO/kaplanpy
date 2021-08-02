@@ -1147,7 +1147,7 @@ class KXLIFF(XLIFF):
                                             1)
 
             for hit in regex.findall(_regex[1], source_text):
-                if hit is not None:
+                if hit is not None and hit[-1] != '':
                     source_text = regex.sub(regex.escape(''.join(hit)),
                                             ''.join((hit[0],
                                                      hit[1],
