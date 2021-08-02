@@ -1,4 +1,4 @@
-__version__ = '0.12.0'
+__version__ = '0.13.0-rc.1'
 
 def can_process(input_file):
     '''
