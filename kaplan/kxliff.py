@@ -675,7 +675,8 @@ class KXLIFF(XLIFF):
             trgt: ISO 639-1 code for the target language.
             segmentation: Sets whether kaplan should split translation units
                           into sentences. This should be either set to False or
-                          left as 'default' for bilingual files (eg. .po files).
+                          left as is for .po files where segments are
+                          already translated.
         '''
 
         name = os.path.basename(source_file)
@@ -1108,10 +1109,8 @@ class KXLIFF(XLIFF):
 
                     _tu.attrib['keys'] = ';'.join((_source_key, 'msgstr[1]'))
 
-            if segmentation == 'default' or not segmentation:
-                for tu in source_file_reference.findall('xliff:unit', nsmap):
-                    tu[0].attrib['id'] = tu.attrib['id']
-                return cls(name + '.kxliff', xml_root)
+            if segmentation == 'default':
+                segmentation = False
 
         elif name.lower().endswith('.txt'):
 
@@ -1129,6 +1128,13 @@ class KXLIFF(XLIFF):
                         _tu[0].remove(_target)
 
                     _source.text = line
+
+        if not segmentation:
+            for tu in source_file_reference.findall('xliff:unit', nsmap):
+                segment = tu.find('xliff:segment', nsmap)
+                if segment is not None:
+                    segment.attrib['id'] = tu.attrib['id']
+            return cls(name + '.kxliff', xml_root)
 
         _regex = (regex.compile(r'(\s+|^)'
                                 r'(\p{Lu}\p{L}{0,3})'
