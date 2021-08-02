@@ -13,6 +13,12 @@ def can_process(input_file):
         return False
 
 def open_bilingualfile(bilingualfile):
+    '''
+    Opens a compatible xliff variant.
+
+    Args:
+        bilingualfile: Path to a .kxliff, .xliff, or .sdlxliff file.
+    '''
     try:
         from .kxliff import KXLIFF
         return KXLIFF.open_bilingualfile(bilingualfile)

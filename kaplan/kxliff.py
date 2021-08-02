@@ -39,6 +39,9 @@ class KXLIFF(XLIFF):
         super().__init__(name, xml_root)
 
     def add_comment(self, segment_i, comment, author):
+        '''
+        Adds a segment-level comment.
+        '''
         segment = self.xml_root.xpath('.//xliff:segment[@id="{0}"]|segment[@id="{0}"]'.format(segment_i), namespaces=nsmap)
 
         if segment != []:
@@ -64,6 +67,9 @@ class KXLIFF(XLIFF):
             raise ValueError('Segment not found.')
 
     def add_loc_quality_issue(self, tu_i, segment_i, issue_type, issue_comment, issue_severity, author):
+        '''
+        Adds a segment-level localization quality flag.
+        '''
         tu = self.xml_root.xpath('.//xliff:unit[@id="{0}"]|unit[@id="{0}"]'.format(tu_i), namespaces=nsmap)[0]
         tu_loc_quality_issues = tu.find('kaplan:locQualityIssues', namespaces=nsmap)
         if tu_loc_quality_issues is None:
@@ -80,6 +86,9 @@ class KXLIFF(XLIFF):
                                                  'added_by': author})
 
     def generate_lqi_report(self, output_path):
+        '''
+        Generates a localization quality issue report.
+        '''
         segments = []
 
         for tu in self.get_translation_units():
@@ -218,7 +227,11 @@ class KXLIFF(XLIFF):
 
         Args:
             output_directory: Path to target directory where the target file will be saved.
-            source_file (optional): Path to source file (Required for file types such as .docx, .odt, etc.).
+            path_to_source_file (optional): Path to source file (Defaults to the
+                                            file path saved when creating the
+                                            .kxliff file).
+            target_filename (optional): Name for the target file (Defaults to the
+                                        name of the source file).
 
         '''
         if not self.name.endswith('.kxliff'):
@@ -565,6 +578,9 @@ class KXLIFF(XLIFF):
             raise ValueError('Filetype incompatible for this task!')
 
     def get_segment_history(self, segment_i):
+        '''
+        Returns the version history of a segment.
+        '''
         segment_history = self.xml_root.find('.//kaplan:history/kaplan:segment[@id="{0}"]'.format(segment_i), self.nsmap)
         if segment_history is not None:
             segment_history = deepcopy(segment_history)
@@ -576,6 +592,13 @@ class KXLIFF(XLIFF):
         return segment_history
 
     def get_segment_lqi(self, segment_i, ignore_resolved=True):
+        '''
+        Returns the localization quality issues (LQIs) for a segment.
+
+        Args:
+            segment_i: Segment ID
+            ignore_resolved: Specified whether resolved LQIs will be ignored.
+        '''
         segment_lqi = []
         for segment_loc_quality_issue in self.xml_root.xpath('.//kaplan:locQualityIssue[@segment="{0}"]'.format(segment_i), namespaces=nsmap):
             if ignore_resolved and segment_loc_quality_issue.attrib.get('resolved'):
@@ -1439,6 +1462,9 @@ class KXLIFF(XLIFF):
         return cls(name + '.kxliff', xml_root)
 
     def resolve_comment(self, segment_i, comment_i, author):
+        '''
+        Marks a comment resolved.
+        '''
         comment = self.xml_root.xpath('.//xliff:note[@segment="{0}" and @id="{1}"]'.format(segment_i, comment_i), namespaces=nsmap)
         if comment != []:
             comment = comment[0]
@@ -1449,6 +1475,14 @@ class KXLIFF(XLIFF):
             raise ValueError('Comment not found.')
 
     def resolve_loc_quality_issue(self, segment_i, issue_i, author):
+        '''
+        Marks a localization quality issue (LQI) resolved.
+
+        Args:
+            segment_i: Segment ID
+            issue_i: LQI ID
+            author: Username or name of the individual resolving the LQI
+        '''
         loc_quality_issue = self.xml_root.xpath('.//kaplan:locQualityIssue[@segment="{0}" and @id="{1}"]'.format(segment_i, issue_i), namespaces=nsmap)
         if loc_quality_issue != []:
             loc_quality_issue = loc_quality_issue[0]
@@ -1461,6 +1495,9 @@ class KXLIFF(XLIFF):
             raise ValueError('LQI not found.')
 
     def update_segment(self, target_segment, tu_i, segment_i, segment_state=None, submitted_by=None, save_history=True):
+        '''
+        Updates a target segment.
+        '''
         if save_history and (segment_state == 'translated' or segment_state == 'reviewed'):
             tu = self.xml_root.xpath('.//xliff:unit[@id="{0}"]|unit[@id="{0}"]'.format(tu_i), namespaces=nsmap)[0]
             segment = tu.find('xliff:segment[@id="{0}"]'.format(segment_i), namespaces=nsmap)

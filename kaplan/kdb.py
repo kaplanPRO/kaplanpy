@@ -40,6 +40,10 @@ class KDB:
 
     @staticmethod
     def entry_to_segment(source_or_target_entry, xml_tag, reversed_tags={}, source_segment=None, safe_mode=True):
+        '''
+        Converts text from entry format (tags are in string format) to segment
+        format (tags are in XML element format).
+        '''
         segment = etree.Element(xml_tag)
 
         for text, tag in regex.findall('([^<>]+)?(<[^<>\s]+/>)?', source_or_target_entry):
@@ -126,9 +130,16 @@ class KDB:
         xliff.save(path_to_xliff.parent)
 
     def get_all_source_entries(self):
+        '''
+        Returns all source entries. This function is usually used for getting
+        project reports, matches and word counts.
+        '''
         return [row[0] for row in self.conn.execute('''SELECT source FROM main''').fetchall()]
 
     def get_entries(self, first_i=None, last_i=None):
+        '''
+        Returns a range of entries.
+        '''
         rows = self.conn.execute('''SELECT * FROM main''').fetchall()
 
         if self.version < (0,10,0):
@@ -307,6 +318,10 @@ class KDB:
 
     @staticmethod
     def segment_to_entry(source_or_target_segment, tags={}):
+        '''
+        Converts text from segment format (tags are in XML element format)
+        to entry format (tags are in string format).
+        '''
         entry = ''
 
         if source_or_target_segment.text is not None:
@@ -392,6 +407,9 @@ class KDB:
         self.submit_entry(source, target, submitted_by, state, overwrite)
 
     def upgrade(self):
+        '''
+        Upgrades the .kdb file to the latest version.
+        '''
         assert self.is_outdated, 'KDB object not outdated.'
 
         if self.version == (0,0,1):
