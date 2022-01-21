@@ -13,6 +13,7 @@ import sqlite3
 
 # Internal Python files
 from kaplan import __version__ as version
+from .tmx import TMX
 from .xliff import XLIFF
 
 class KDB:
@@ -166,6 +167,56 @@ class KDB:
                                     file_name))
 
         self.submit_entries(entries, overwrite)
+
+    def import_tmx(self, path_to_tmx, overwrite=True, plaintext=True):
+        time = datetime.utcnow().isoformat()
+        file_name = pathlib.Path(path_to_tmx).name
+
+        tmx = TMX.open(path_to_tmx)
+
+        nsmap = {'xml':'http://www.w3.org/XML/1998/namespace'}
+
+        imported_segments = []
+
+        for tu in tmx.gen_translation_units():
+            source_tuv = tu.find('tuv[@xml:lang=\'{0}\']'.format(self.src), nsmap)
+            target_tuv = tu.find('tuv[@xml:lang=\'{0}\']'.format(self.trgt), nsmap)
+
+            if source_tuv is None or target_tuv is None:
+                continue
+
+            source_seg = source_tuv.find('seg')
+            target_seg = target_tuv.find('seg')
+
+            if plaintext:
+                source = source_seg.text
+                target = target_seg.text
+
+            else:
+                source = ''
+                if source_seg.text is not None:
+                    source += source_seg.text
+                for child in source_seg:
+                    if child.text is not None:
+                        source += child.text
+                    if child.tail is not None:
+                        source += child.tail
+
+                target = ''
+                if target_seg.text is not None:
+                    target += target_seg.text
+                for child in target_seg:
+                    if child.text is not None:
+                        target += child.text
+                    if child.tail is not None:
+                        target += child.tail
+
+            if source == '' or source is None or target == '' or target is None:
+                continue
+
+            imported_segments.append((source, target, 'imported', time, file_name))
+
+        self.submit_entries(imported_segments)
 
     def import_xliff(self, path_to_xliff, overwrite=True):
         entries = []
