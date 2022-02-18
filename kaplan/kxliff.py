@@ -1001,7 +1001,7 @@ class KXLIFF(XLIFF):
 
             source_nsmap = source_file_reference.find('kaplan:internal-file[@rel="content.xml"]', nsmap)[0].nsmap
 
-            for paragraph in source_file_reference.findall('.//text:p', source_nsmap):
+            for paragraph in source_file_reference.xpath('.//text:p|.//text:h', namespaces={'text':source_nsmap['text']}):
                 if (paragraph.text is None
                 and (len(paragraph) == 0
                 or (min(child.text is None for child in paragraph) and min(child.tail is None for child in paragraph)))):
