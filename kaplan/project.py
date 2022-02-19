@@ -5,7 +5,7 @@ from lxml import etree
 from datetime import datetime
 import difflib
 import json
-import os
+from pathlib import PurePosixPath
 import zipfile
 
 # Internal Python files
@@ -162,46 +162,48 @@ class Project:
                 file_dict = {}
 
                 if include_source_and_resources:
-                    source = self.files[i].get('source')
+                    source = PurePosixPath(self.files[i].get('source'))
                     if source:
-                        file_dict['source'] = '/'.join((self.source_language,
-                                                           os.path.basename(source)))
+                        source_zip_path = PurePosixPath(self.source_language, source.name)
+                        file_dict['source'] = str(source_zip_path)
                         project_package.write(source,
-                                              file_dict['source'])
+                                              source_zip_path)
 
-                    originalBF = self.files[i]['originalBF']
-                    file_dict['originalBF'] = '/'.join((self.source_language,
-                                                       os.path.basename(originalBF)))
+                    originalBF = PurePosixPath(self.files[i]['originalBF'])
+                    originalBF_zip_path = PurePosixPath(self.source_language, originalBF.name)
+                    file_dict['originalBF'] = str(originalBF_zip_path)
 
                     project_package.write(originalBF,
-                                          file_dict['originalBF'])
+                                          originalBF_zip_path)
 
-                targetBF = self.files[i]['targetBF']
-                file_dict['targetBF'] = '/'.join((self.target_language,
-                                                 os.path.basename(targetBF)))
+                targetBF = PurePosixPath(self.files[i]['targetBF'])
+                targetBF_zip_path = PurePosixPath(self.target_language, targetBF.name)
+                file_dict['targetBF'] = str(targetBF_zip_path)
 
                 project_package.write(targetBF,
-                                      file_dict['targetBF'])
+                                      targetBF_zip_path)
 
                 manifest['files'][i] = file_dict
 
             if self.translation_memories != {} and include_source_and_resources:
                 manifest['tms'] = {}
                 for i in range(len(self.translation_memories)):
-                    manifest['tms'][i] = '/'.join(('TM',
-                                                  os.path.basename(self.translation_memories[i])))
+                    tm_path = PurePosixPath(self.translation_memories[i])
+                    tm_zip_path = PurePosixPath('TM', tm_path.name)
+                    manifest['tms'][i] = str(tm_zip_path)
 
-                    project_package.write(self.translation_memories[i],
-                                          manifest['tms'][i])
+                    project_package.write(tm_path,
+                                          tm_zip_path)
 
             if self.termbases != {} and include_source_and_resources:
                 manifest['tbs'] = {}
                 for i in range(len(self.translation_memories)):
-                    manifest['tbs'][i] = '/'.join(('TB',
-                                                  os.path.basename(self.termbases[i])))
+                    tb_path = PurePosixPath(self.termbases[i])
+                    tb_zip_path = PurePosixPath('TB', tb_path.name)
+                    manifest['tbs'][i] = str(tb_zip_path)
 
-                    project_package.write(self.termbases[i],
-                                          manifest['tbs'][i])
+                    project_package.write(tb_path,
+                                          tb_zip_path)
 
             if self.reports != {}:
                 manifest['reports'] = self.reports
@@ -217,19 +219,21 @@ class Project:
         with zipfile.ZipFile(project_package) as project_package:
             manifest = json.loads(project_package.read('manifest.json'))
 
+
+
             for i in manifest['files']:
                 for key in manifest['files'][i]:
-                    project_package.extract(manifest['files'][i][key],
+                    project_package.extract(str(PurePosixPath(manifest['files'][i][key])),
                                             project_directory)
 
             if 'tms' in manifest:
                 for i in manifest['tms']:
-                    project_package.extract(manifest['tms'][i],
+                    project_package.extract(str(PurePosixPath(manifest['tms'][i])),
                                             project_directory)
 
             if 'tbs' in manifest:
                 for i in manifest['tbs']:
-                    project_package.extract(manifest['tbs'][i],
+                    project_package.extract(str(PurePosixPath(manifest['tbs'][i])),
                                             project_directory)
 
         return manifest
@@ -243,7 +247,7 @@ class Project:
             manifest = json.loads(project_package.read('manifest.json'))
 
             for project_file in project_files:
-                project_package.extract(manifest['files'][project_file]['targetBF'],
+                project_package.extract(str(PurePosixPath(manifest['files'][project_file]['targetBF'])),
                                         project_directory)
 
     @staticmethod
