@@ -8,8 +8,7 @@ from datetime import datetime
 import difflib
 import html
 from io import BytesIO
-import os
-import pathlib
+from pathlib import Path
 
 nsmap = {
     'xliff': 'urn:oasis:names:tc:xliff:document:2.1',
@@ -156,10 +155,10 @@ class XLIFF:
         Opens an .xliff file.
         '''
         xml_root = etree.parse(bilingualfile).getroot()
-        if isinstance(bilingualfile, BytesIO):
+        if isinstance(bilingualfile, BytesIO): # TODO remove BytesIO for 0.15.0
             name = bilingualfile.name
         else:
-            name = pathlib.Path(bilingualfile).name
+            name = Path(bilingualfile).name
 
         return cls(name, xml_root)
 
@@ -167,7 +166,7 @@ class XLIFF:
         '''
         Saves the bilingual file in a given directory.
         '''
-        self.xml_root.getroottree().write(os.path.join(output_directory, self.name),
+        self.xml_root.getroottree().write(str(Path(output_directory, self.name)),
                                           encoding='UTF-8',
                                           xml_declaration=True)
 

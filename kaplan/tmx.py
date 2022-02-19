@@ -75,6 +75,8 @@ class TMX:
         return cls(name, xml_root)
 
     def save(self, directory, name=None):
-        self.xml_root.getroottree().write(Path(directory) / name if name else self.name,
+        if name is None:
+            name = self.name
+        self.xml_root.getroottree().write(str(Path(directory, name)),
                                           encoding='UTF-8',
                                           xml_declaration=True)

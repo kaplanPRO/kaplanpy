@@ -6,14 +6,13 @@ import regex
 from copy import deepcopy
 from datetime import datetime
 import html
-from io import BytesIO
-import os
+from pathlib import Path
 import random
 import string
+import tempfile
 import zipfile
 
 # Internal Python files
-from .utils import remove_dir
 from .xliff import XLIFF
 
 nsmap = {
@@ -219,7 +218,7 @@ class KXLIFF(XLIFF):
             else:
                 td.text = ''
 
-        report.getroottree().write(output_path)
+        report.getroottree().write(str(output_path))
 
     def generate_target_translation(self, output_directory, path_to_source_file=None, target_filename=None):
         '''
@@ -237,12 +236,15 @@ class KXLIFF(XLIFF):
         if not self.name.endswith('.kxliff'):
             raise TypeError('Function only available for .kxliff files.')
 
+        output_directory = Path(output_directory)
+
         source_file = self.xml_root.find('file', self.nsmap)
 
         if path_to_source_file is None:
             path_to_source_file = source_file.attrib['original']
+        path_to_source_file = Path(path_to_source_file)
 
-        source_filename = os.path.basename(path_to_source_file)
+        source_filename = path_to_source_file.name
 
         if target_filename is None:
             target_filename = source_filename
@@ -365,29 +367,19 @@ class KXLIFF(XLIFF):
                     paragraph_parent.insert(child_i, target_child)
                     child_i += 1
 
-            temp_dir = os.path.join(output_directory, ('.temp' + target_filename))
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp_dir_path = Path(tmp_dir)
+                with zipfile.ZipFile(path_to_source_file) as source_zip:
+                    source_zip.extractall(tmp_dir)
 
-            if os.path.exists(temp_dir):
-                remove_dir(temp_dir)
+                internal_file = self.xml_root.find('.//kaplan:internal-file', self.nsmap)
+                etree.ElementTree(internal_file[0]).write(str(tmp_dir_path / internal_file.attrib['rel']),
+                                                          encoding='UTF-8',
+                                                          xml_declaration=True)
 
-            with zipfile.ZipFile(path_to_source_file) as source_zip:
-                source_zip.extractall(temp_dir)
-
-            internal_file = self.xml_root.find('.//kaplan:internal-file', self.nsmap)
-            etree.ElementTree(internal_file[0]).write(os.path.join(temp_dir, internal_file.attrib['rel']),
-                                                      encoding='UTF-8',
-                                                      xml_declaration=True)
-
-            to_zip = []
-            for root, dirs, files in os.walk(temp_dir):
-                for file_in_transit in files:
-                    to_zip.append(os.path.join(root, file_in_transit))
-
-            with zipfile.ZipFile(os.path.join(output_directory, target_filename), 'w') as target_zip:
-                for path_to_file in to_zip:
-                    target_zip.write(path_to_file, path_to_file[len(temp_dir):])
-
-            remove_dir(temp_dir)
+                with zipfile.ZipFile((output_directory / target_filename), 'w') as target_zip:
+                    for path_to_file in tmp_dir_path.rglob('*'):
+                        target_zip.write(path_to_file, path_to_file.relative_to(tmp_dir_path))
 
         elif source_filename.lower().endswith(('.odp', '.ods', '.odt')):
             def add_text(last_span, text):
@@ -494,27 +486,21 @@ class KXLIFF(XLIFF):
                     placeholder_parent.insert(placeholder_i, child)
                     placeholder_i += 1
 
-            temp_dir = os.path.join(output_directory, ('.temp' + target_filename))
+            with tempfile.TemporaryDirectory() as tmp_dir:
 
-            if os.path.exists(temp_dir):
-                remove_dir(temp_dir)
+                tmp_dir_path = Path(tmp_dir)
 
-            with zipfile.ZipFile(path_to_source_file) as source_zip:
-                source_zip.extractall(temp_dir)
+                with zipfile.ZipFile(path_to_source_file) as source_zip:
+                    source_zip.extractall(tmp_dir_path)
 
-            internal_file = duplicated_xml_root.find('.//kaplan:internal-file', self.nsmap)
-            etree.ElementTree(internal_file[0]).write(os.path.join(temp_dir, internal_file.attrib['rel']),
-                                                      encoding='UTF-8',
-                                                      xml_declaration=True)
+                internal_file = duplicated_xml_root.find('.//kaplan:internal-file', self.nsmap)
+                etree.ElementTree(internal_file[0]).write(str(tmp_dir_path / internal_file.attrib['rel']),
+                                                          encoding='UTF-8',
+                                                          xml_declaration=True)
 
-            to_zip = []
-            for root, dirs, files in os.walk(temp_dir):
-                for file_in_transit in files:
-                    to_zip.append(os.path.join(root, file_in_transit))
-
-            with zipfile.ZipFile(os.path.join(output_directory, target_filename), 'w') as target_zip:
-                for path_to_file in to_zip:
-                    target_zip.write(path_to_file, path_to_file[len(temp_dir):])
+                with zipfile.ZipFile((output_directory / target_filename), 'w') as target_zip:
+                    for path_to_file in tmp_dir_path.rglob('*'):
+                        target_zip.write(path_to_file, path_to_file.relative_to(tmp_dir_path))
 
         elif source_filename.lower().endswith('.po'):
             po_entries = {}
@@ -552,7 +538,7 @@ class KXLIFF(XLIFF):
                     po_entries[po_id][1].append('{0} {1}'.format(keys[0], '\n'.join(segment[0])))
                     po_entries[po_id][2].append('{0} {1}'.format(keys[1], '\n'.join(segment[1])))
 
-            with open(os.path.join(output_directory, target_filename), 'w') as outfile:
+            with open((output_directory / target_filename), 'w') as outfile:
                 outfile.write(source_file.find('kaplan:internal-file', self.nsmap).text + '\n')
 
                 for po_entry_i in sorted(po_entries):
@@ -564,7 +550,7 @@ class KXLIFF(XLIFF):
                         outfile.write('\n')
 
         elif source_filename.lower().endswith('.txt'):
-            with open(os.path.join(output_directory, target_filename), 'w') as outfile:
+            with open((output_directory / target_filename), 'w') as outfile:
                 for trans_unit in source_file.findall('.//unit', self.nsmap):
                     for segment in trans_unit.xpath('.//xliff:segment|.//xliff:ignorable', namespaces={'xliff':self.nsmap[None]}):
                         target = segment.find('target', self.nsmap)
@@ -679,7 +665,9 @@ class KXLIFF(XLIFF):
                           already translated.
         '''
 
-        name = os.path.basename(source_file)
+        source_file_path = Path(source_file)
+
+        name = source_file_path.name
 
         if name.lower().endswith(('.kxliff', '.sdlxliff', '.xliff')):
             raise TypeError('This function cannot handle .xliff variants. '
@@ -700,7 +688,7 @@ class KXLIFF(XLIFF):
 
         source_file_reference = etree.SubElement(xml_root, '{{{0}}}file'.format(nsmap['xliff']))
         source_file_reference.attrib['id'] = '1'
-        source_file_reference.attrib['original'] = source_file
+        source_file_reference.attrib['original'] = str(source_file_path)
 
         _tu_template = etree.Element('{{{0}}}unit'.format(nsmap['xliff']))
         _segment = etree.SubElement(_tu_template, '{{{0}}}segment'.format(nsmap['xliff']))
@@ -818,7 +806,7 @@ class KXLIFF(XLIFF):
                 elif paragraph_child.tag.endswith('}drawing'):
                     add_placeholder(tu, source_xml, paragraph_child, 'ph', True, True)
 
-            with zipfile.ZipFile(source_file) as source_zip:
+            with zipfile.ZipFile(source_file_path) as source_zip:
                 source_file_content = etree.parse(source_zip.open('word/document.xml')).getroot()
 
             source_nsmap = source_file_content.nsmap
@@ -992,7 +980,7 @@ class KXLIFF(XLIFF):
 
             source_nsmap = None
 
-            with zipfile.ZipFile(source_file) as source_zip:
+            with zipfile.ZipFile(source_file_path) as source_zip:
                 for zip_child in source_zip.namelist():
                     if zip_child.lower().endswith('content.xml'):
                         internal_file = etree.Element('{{{0}}}internal-file'.format(nsmap['kaplan']), {'rel': zip_child})
@@ -1040,7 +1028,7 @@ class KXLIFF(XLIFF):
 
             regex_compile = regex.compile('([a-z0-9\[\]_]+)?\s?"(.*?)"$')
 
-            with open(source_file, encoding='UTF-8') as po_file:
+            with open(source_file_path, encoding='UTF-8') as po_file:
                 entry = {}
                 entry_metadata = []
                 last_element = ''
@@ -1114,7 +1102,7 @@ class KXLIFF(XLIFF):
 
         elif name.lower().endswith('.txt'):
 
-            with open(source_file, encoding='UTF-8') as source_file:
+            with open(source_file_path, encoding='UTF-8') as source_file:
                 for line in source_file:
                     _tu = deepcopy(_tu_template)
                     _tu.attrib['id'] = str(_tu_counter)
