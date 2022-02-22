@@ -7,7 +7,6 @@ from copy import deepcopy
 from datetime import datetime
 import difflib
 import html
-from io import BytesIO
 from pathlib import Path
 
 nsmap = {
@@ -155,10 +154,8 @@ class XLIFF:
         Opens an .xliff file.
         '''
         xml_root = etree.parse(bilingualfile).getroot()
-        if isinstance(bilingualfile, BytesIO): # TODO remove BytesIO for 0.15.0
-            name = bilingualfile.name
-        else:
-            name = Path(bilingualfile).name
+
+        name = Path(bilingualfile).name
 
         return cls(name, xml_root)
 
