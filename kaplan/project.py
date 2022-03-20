@@ -162,8 +162,9 @@ class Project:
                 file_dict = {}
 
                 if include_source_and_resources:
-                    source = PurePosixPath(self.files[i].get('source'))
+                    source = self.files[i].get('source')
                     if source:
+                        source = PurePosixPath(source)
                         source_zip_path = PurePosixPath(self.source_language, source.name)
                         file_dict['source'] = str(source_zip_path)
                         project_package.write(source,
