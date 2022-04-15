@@ -194,7 +194,11 @@ class XLIFF:
         if self.xliff_version < 2.0:
             active_g_tags = []
             for any_child in target_segment:
-                if any_child.tag.endswith('g'):
+                any_child_tag = etree.QName(any_child).localname
+                if any_child_tag not in ('g', 'x', 'bx', 'ex', 'bpt', 'ept', 'ph', 'it', 'mrk'):
+                    raise ValueError('Target has unrecognized child: {}'.format(any_child_tag))
+
+                if any_child_tag == 'g':
                     if any_child.tail is not None:
                         if len(active_g_tags) > 0:
                             active_g_tag = active_g_tags[0]
@@ -263,7 +267,10 @@ class XLIFF:
         else:
             target_segment.tag = '{{{0}}}target'.format(self.nsmap[None])
             for child in target_segment:
-                child.tag = '{{{0}}}{1}'.format(self.nsmap[None], etree.QName(child).localname)
+                child_tag = etree.QName(child).localname
+                if child_tag not in ('ec', 'sc', 'ph'):
+                    raise ValueError('Target has unrecognized child: {}'.format(child_tag))
+                child.tag = '{{{0}}}{1}'.format(self.nsmap[None], child_tag)
 
         _target_segment = deepcopy(target_segment)
 
