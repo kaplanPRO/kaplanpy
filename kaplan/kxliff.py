@@ -654,6 +654,8 @@ class KXLIFF(XLIFF):
             list_of_segments: List containing segment IDs.
         '''
 
+        assert len(list_of_segments) > 1, 'list_of_segments contains less than 2 segments.'
+
         def transfer_children(source_parent, target_parent):
             if source_parent.text is not None:
                 if len(target_parent) == 0:
