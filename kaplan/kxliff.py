@@ -673,10 +673,18 @@ class KXLIFF(XLIFF):
         segments = []
         segment_ids = []
         for segment_id in list_of_segments:
-            segment = self.xml_root.xpath('.//xliff:segment[@id="{0}"]'.format(str(segment_id)), namespaces=nsmap)[0]
+            segment = self.xml_root.xpath('.//xliff:segment[@id="{0}"]'.format(str(segment_id)), namespaces=nsmap)
+
+            if segment == []:
+                raise ValueError('Segment #{} does not exist.'.format(segment_id))
+
+            segment = segment[0]
+
+            assert 'locked' not in segment.attrib.get('subState', ''), 'Segment #{} is locked'.format(segment_id)
 
             if translation_unit is None:
                 translation_unit = segment.getparent()
+
             else:
                 assert translation_unit == segment.getparent(), 'Segments are not of the same translation unit.'
 

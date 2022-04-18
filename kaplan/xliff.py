@@ -170,6 +170,39 @@ class XLIFF:
                                           encoding='UTF-8',
                                           xml_declaration=True)
 
+    def set_segment_lock(self, segment_no, lock=True):
+        '''
+        Sets the lock status for a segment
+
+        Args:
+            segment_no (str or int): The number of the segment.
+            lock (bool): Whether the segment should be locked.
+        '''
+        if self.xliff_version >= 2.0:
+            segment = self.xml_root.find('.//segment[@id="{0}"]'.format(segment_no), self.nsmap)
+            if segment is None:
+                raise ValueError('Segment #{} does not exists.'.format(segment_no))
+            cur_substate = segment.attrib.get('subState', segment.attrib.get('state', 'initial-blank'))
+            is_locked = cur_substate.lower().endswith('-locked')
+            if (lock and is_locked) or (not lock and not is_locked):
+                pass
+            elif lock and not is_locked:
+                segment.attrib['subState'] = cur_substate + '-locked'
+            elif not lock and is_locked:
+                segment.attrib['subState'] = cur_substate[:-7]
+        else:
+            segment = self.xml_root.find('.//target//mrk[@mid="{0}"][@mtype="seg"]'.format(segment_no), self.nsmap)
+            if segment is None:
+                raise ValueError('Segment #{} does not exists.'.format(segment_no))
+            cur_state = segment.attrib.get('state', 'new')
+            is_locked = cur_state.lower().startswith('x-locked')
+            if (lock and is_locked) or (not lock and not is_locked):
+                pass
+            elif lock and not is_locked:
+                segment.attrib['state'] = 'x-locked-' + cur_state
+            elif not lock and is_locked:
+                segment.attrib['state'] = cur_state[9:]
+
     def update_segment(self, target_segment, tu_no, segment_no=None, segment_state=None, submitted_by=None):
         '''
         Updates a target segment.
