@@ -22,7 +22,7 @@ copyright = '2021, Kaplan'
 author = 'Çağatay Onur Şengör'
 
 # The full version, including alpha/beta/rc tags
-release = '0.14.0'
+release = '0.16.0'
 
 
 # -- General configuration ---------------------------------------------------
