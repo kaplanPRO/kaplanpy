@@ -654,6 +654,8 @@ class KXLIFF(XLIFF):
             list_of_segments: List containing segment IDs.
         '''
 
+        assert len(list_of_segments) > 1, 'list_of_segments contains less than 2 segments.'
+
         def transfer_children(source_parent, target_parent):
             if source_parent.text is not None:
                 if len(target_parent) == 0:
@@ -673,10 +675,18 @@ class KXLIFF(XLIFF):
         segments = []
         segment_ids = []
         for segment_id in list_of_segments:
-            segment = self.xml_root.xpath('.//xliff:segment[@id="{0}"]'.format(str(segment_id)), namespaces=nsmap)[0]
+            segment = self.xml_root.xpath('.//xliff:segment[@id="{0}"]'.format(str(segment_id)), namespaces=nsmap)
+
+            if segment == []:
+                raise ValueError('Segment #{} does not exist.'.format(segment_id))
+
+            segment = segment[0]
+
+            assert 'locked' not in segment.attrib.get('subState', ''), 'Segment #{} is locked'.format(segment_id)
 
             if translation_unit is None:
                 translation_unit = segment.getparent()
+
             else:
                 assert translation_unit == segment.getparent(), 'Segments are not of the same translation unit.'
 

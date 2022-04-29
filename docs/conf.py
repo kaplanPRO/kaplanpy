@@ -12,7 +12,7 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../kaplan'))
+sys.path.insert(0, os.path.abspath('../'))
 
 
 # -- Project information -----------------------------------------------------
@@ -22,7 +22,7 @@ copyright = '2021, Kaplan'
 author = 'Çağatay Onur Şengör'
 
 # The full version, including alpha/beta/rc tags
-release = '0.14.0'
+release = '0.16.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -43,7 +43,7 @@ templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '.venv']
 
 
 # -- Options for HTML output -------------------------------------------------

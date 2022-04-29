@@ -23,8 +23,13 @@ class SDLXLIFF(XLIFF):
                     continue
                 seg_defs = self.xml_root.xpath('.//sdl:seg-defs/sdl:seg[@id="{0}"]'.format(segment.attrib['id']), namespaces={'sdl':self.nsmap['sdl']})[0]
                 segment_state = seg_defs.attrib.get('conf', None)
+                segment_lock = seg_defs.attrib.get('locked', 'false').lower() == 'true'
                 if segment_state is not None:
                     segment.attrib['state'] = segment_state.lower()
+                    if segment_lock:
+                        segment.attrib['state'] += '-locked'
+                elif segment_lock:
+                    segment.attrib['state'] = 'locked'
 
             yield translation_unit
 
@@ -38,6 +43,20 @@ class SDLXLIFF(XLIFF):
             translation_units.append(translation_unit)
 
         return translation_units
+
+    def set_segment_lock(self, segment_no, lock=True):
+        '''
+        Sets the lock status for a segment
+
+        Args:
+            segment_no (str or int): The number of the segment.
+            lock (bool): Whether the segment should be locked.
+        '''
+        segment_details = self.xml_root.xpath('.//sdl:seg[@id="{0}"]'.format(segment_no), namespaces={'sdl':self.nsmap['sdl']})[0]
+        if lock:
+            segment_details.attrib['locked'] = 'true'
+        else:
+            segment_details.attrib.pop('locked', None)
 
     def update_segment(self, target_segment, tu_no, segment_no, segment_state, submitted_by):
         '''

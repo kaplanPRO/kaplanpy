@@ -42,6 +42,9 @@ class XLIFF:
                 for _child in _translation_unit:
                     if not _child.tag.endswith(('}segment', '}ignorable')):
                         _translation_unit.remove(_child)
+                        continue
+                    _child.attrib['state'] = _child.attrib.get('subState', _child.attrib.get('state', 'initial-blank'))
+                    _child.attrib.pop('subState', None)
                 for _any_child in _translation_unit.findall('.//'):
                     if 'equiv' in _any_child.attrib:
                         _any_child.text = html.unescape(_any_child.attrib['equiv'])
@@ -167,6 +170,39 @@ class XLIFF:
                                           encoding='UTF-8',
                                           xml_declaration=True)
 
+    def set_segment_lock(self, segment_no, lock=True):
+        '''
+        Sets the lock status for a segment
+
+        Args:
+            segment_no (str or int): The number of the segment.
+            lock (bool): Whether the segment should be locked.
+        '''
+        if self.xliff_version >= 2.0:
+            segment = self.xml_root.find('.//segment[@id="{0}"]'.format(segment_no), self.nsmap)
+            if segment is None:
+                raise ValueError('Segment #{} does not exists.'.format(segment_no))
+            cur_substate = segment.attrib.get('subState', segment.attrib.get('state', 'initial-blank'))
+            is_locked = cur_substate.lower().endswith('-locked')
+            if (lock and is_locked) or (not lock and not is_locked):
+                pass
+            elif lock and not is_locked:
+                segment.attrib['subState'] = cur_substate + '-locked'
+            elif not lock and is_locked:
+                segment.attrib['subState'] = cur_substate[:-7]
+        else:
+            segment = self.xml_root.find('.//target//mrk[@mid="{0}"][@mtype="seg"]'.format(segment_no), self.nsmap)
+            if segment is None:
+                raise ValueError('Segment #{} does not exists.'.format(segment_no))
+            cur_state = segment.attrib.get('state', 'new')
+            is_locked = cur_state.lower().startswith('x-locked')
+            if (lock and is_locked) or (not lock and not is_locked):
+                pass
+            elif lock and not is_locked:
+                segment.attrib['state'] = 'x-locked-' + cur_state
+            elif not lock and is_locked:
+                segment.attrib['state'] = cur_state[9:]
+
     def update_segment(self, target_segment, tu_no, segment_no=None, segment_state=None, submitted_by=None):
         '''
         Updates a target segment.
@@ -184,6 +220,49 @@ class XLIFF:
 
         assert etree.QName(target_segment).localname == 'target'
 
+        segment = None
+        if self.xliff_version >= 2.0:
+            translation_unit = self.xml_root.find('.//unit[@id="{0}"]'.format(tu_no), self.nsmap)
+            if segment_no:
+                segment = translation_unit.find('segment[@id="{0}"]'.format(segment_no), self.nsmap)
+            else:
+                segment = translation_unit.find('segment', self.nsmap)
+
+            attribute = 'subState'
+        else:
+            translation_unit = self.xml_root.find('.//trans-unit[@id="{0}"]'.format(tu_no), self.nsmap)
+            if segment_no:
+                segment = translation_unit.find('target//mrk[@mid="{0}"][@mtype="seg"]'.format(segment_no), self.nsmap)
+            else:
+                segment = translation_unit.find('target//mrk[@mtype="seg"]', self.nsmap)
+
+            attribute = 'state'
+
+        if segment is None:
+            raise ValueError('Segment does not exist.')
+
+        assert 'locked' not in segment.attrib.get(attribute, ''), 'Segment is locked.'
+
+        segment_substate = None
+        if segment_state:
+            segment_state = segment_state.lower()
+            if self.xliff_version >= 2.0:
+                if segment_state == 'blank':
+                    segment_state = 'initial'
+                    segment_substate = 'initial-blank'
+                elif segment_state == 'draft':
+                    segment_state = 'initial'
+                    segment_substate = 'initial-draft'
+                elif segment_state in ('translated', 'reviewed'):
+                    segment_substate = segment_state
+                else:
+                    segment_substate = segment_state
+                    segment_state = None
+
+            else:
+                if segment_state not in ('new', 'translated', 'signed-off'):
+                    segment_state = 'x-{}'.format(segment_state)
+
         for any_child in target_segment:
             if 'dataref' in any_child.attrib:
                 any_child.attrib['dataRef'] = any_child.attrib.pop('dataref')
@@ -194,7 +273,11 @@ class XLIFF:
         if self.xliff_version < 2.0:
             active_g_tags = []
             for any_child in target_segment:
-                if any_child.tag.endswith('g'):
+                any_child_tag = etree.QName(any_child).localname
+                if any_child_tag not in ('g', 'x', 'bx', 'ex', 'bpt', 'ept', 'ph', 'it', 'mrk'):
+                    raise ValueError('Target has unrecognized child: {}'.format(any_child_tag))
+
+                if any_child_tag == 'g':
                     if any_child.tail is not None:
                         if len(active_g_tags) > 0:
                             active_g_tag = active_g_tags[0]
@@ -263,7 +346,10 @@ class XLIFF:
         else:
             target_segment.tag = '{{{0}}}target'.format(self.nsmap[None])
             for child in target_segment:
-                child.tag = '{{{0}}}{1}'.format(self.nsmap[None], etree.QName(child).localname)
+                child_tag = etree.QName(child).localname
+                if child_tag not in ('ec', 'sc', 'ph'):
+                    raise ValueError('Target has unrecognized child: {}'.format(child_tag))
+                child.tag = '{{{0}}}{1}'.format(self.nsmap[None], child_tag)
 
         _target_segment = deepcopy(target_segment)
 
@@ -277,6 +363,7 @@ class XLIFF:
 
             if segment_state and submitted_by:
                 _segment.attrib['state'] = segment_state
+                _segment.attrib['subState'] = segment_substate
                 _segment.attrib['modified_on'] = datetime.utcnow().isoformat()
                 _segment.attrib['modified_by'] = submitted_by
 
