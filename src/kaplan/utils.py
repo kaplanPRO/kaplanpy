@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import random
 import regex
 import string
@@ -56,3 +57,27 @@ def split_into_sentences(text_unit: string):
     text_unit = regex.sub(placeholders[0], "", text_unit)
 
     return text_unit.split(placeholders[1])
+
+
+def can_process(input_file: Path | str):
+    """
+    Determines whether kaplan can handle input_file.
+
+    Args:
+        input_file: Path to a file.
+    """
+
+    recognize_suffixes = (
+        ".docx",
+        ".json",
+        ".kxliff",
+        ".odp",
+        ".ods",
+        ".odt",
+        ".po",
+        ".sdlxliff",
+        ".txt",
+        ".xliff",
+    )
+
+    return Path(input_file).suffix.lower() in recognize_suffixes
