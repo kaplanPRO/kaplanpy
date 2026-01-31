@@ -1,0 +1,31 @@
+[project]
+name = "kaplan"
+version = "0.17.0-alpha"
+authors = [{ name = "Kaplan", email = "contact@kaplan.pro" }]
+description = "Computer-assisted translation tool package"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.14"
+dependencies = ["lxml>=6.0.2,<7", "regex==2026.1.15"]
+keywords = [
+    "CAT",
+    "computer-assisted translation",
+    "computer-aided translation",
+    "translation",
+    "free-to-use",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.26,<0.10.0"]
+build-backend = "uv_build"
+
+[project.urls]
+Homepage = "https://kaplan.pro"
+Repository = "https://github.com/kaplanPRO/kaplanpy"
