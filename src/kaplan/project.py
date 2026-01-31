@@ -9,7 +9,7 @@ import zipfile
 
 # Internal Python files
 from .kdb import KDB
-import kaplan
+from .bilingual_file import open_bilingual_file
 
 
 class Project:
@@ -81,7 +81,7 @@ class Project:
                 "Total": 0,
             }
 
-            for tu in kaplan.open_bilingualfile(
+            for tu in open_bilingual_file(
                 self.files[file_i]["targetBF"]
             ).get_translation_units():
                 for segment in tu:

@@ -87,7 +87,7 @@ class KXLIFF(XLIFF):
             tu_loc_quality_issues = etree.SubElement(
                 tu, "{{{0}}}locQualityIssues".format(nsmap["kaplan"])
             )
-        tu_loc_quality_issue = etree.SubElement(
+        etree.SubElement(
             tu_loc_quality_issues,
             "{{{0}}}locQualityIssue".format(nsmap["kaplan"]),
             {
@@ -955,10 +955,10 @@ class KXLIFF(XLIFF):
         if name.lower().endswith((".kxliff", ".sdlxliff", ".xliff")):
             raise TypeError(
                 "This function cannot handle .xliff variants. "
-                "Call either kaplan.open_bilingualfile, "
-                "kaplan.kxliff.KXLIFF.open_bilingualfile, "
-                "kaplan.xliff.XLIFF.open_bilingualfile, or "
-                "kaplan.sdlxliff.SDLXLIFF.open_bilingualfile instead."
+                "Call either kaplan.open_bilingual_file, "
+                "kaplan.kxliff.KXLIFF.open_bilingual_file, "
+                "kaplan.xliff.XLIFF.open_bilingual_file, or "
+                "kaplan.sdlxliff.SDLXLIFF.open_bilingual_file instead."
             )
 
         _segment_counter = 1
@@ -1458,7 +1458,7 @@ class KXLIFF(XLIFF):
 
                     regex_match = regex_compile.search(line)
 
-                    if regex_match == None:
+                    if regex_match is None:
                         continue
 
                     if regex_match.group(1):

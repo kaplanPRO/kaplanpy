@@ -220,13 +220,13 @@ class XLIFF:
         raise TypeError("This function is available for the kxliff.KXLIFF class only.")
 
     @classmethod
-    def open_bilingualfile(cls, bilingualfile):
+    def open_bilingual_file(cls, bilingual_file):
         """
         Opens an .xliff file.
         """
-        xml_root = etree.parse(bilingualfile).getroot()
+        xml_root = etree.parse(bilingual_file).getroot()
 
-        name = Path(bilingualfile).name
+        name = Path(bilingual_file).name
 
         return cls(name, xml_root)
 

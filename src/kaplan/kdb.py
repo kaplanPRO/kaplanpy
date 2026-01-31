@@ -242,7 +242,7 @@ class KDB:
         time = datetime.utcnow().isoformat()
         file_name = pathlib.Path(path_to_xliff).name
 
-        xliff = XLIFF.open_bilingualfile(path_to_xliff)
+        xliff = XLIFF.open_bilingual_file(path_to_xliff)
 
         for tu in xliff.get_translation_units():
             for segment in tu:

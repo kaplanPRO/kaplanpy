@@ -1,6 +1,11 @@
 from importlib.metadata import version
 
+from .bilingual_file import open_bilingual_file
+
 __version__ = version("kaplan")
+
+
+__all__ = ["open_bilingual_file", "__version__"]
 
 
 def can_process(input_file):
@@ -27,28 +32,3 @@ def can_process(input_file):
         return True
     else:
         return False
-
-
-def open_bilingualfile(bilingualfile):
-    """
-    Opens a compatible xliff variant.
-
-    Args:
-        bilingualfile: Path to a .kxliff, .xliff, or .sdlxliff file.
-    """
-    try:
-        from .kxliff import KXLIFF
-
-        return KXLIFF.open_bilingualfile(bilingualfile)
-    except:
-        try:
-            from .sdlxliff import SDLXLIFF
-
-            return SDLXLIFF.open_bilingualfile(bilingualfile)
-        except:
-            try:
-                from .xliff import XLIFF
-
-                return XLIFF.open_bilingualfile(bilingualfile)
-            except:
-                raise TypeError("File not compatible.")
