@@ -1,5 +1,5 @@
 # Installed libraries
-from lxml import etree
+import lxml.etree as etree
 
 # Standard Python libraries
 from copy import deepcopy
