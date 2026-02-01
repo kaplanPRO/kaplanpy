@@ -1,5 +1,5 @@
 # Installed libraries
-from lxml import etree
+import lxml.etree as etree
 
 # Standard Python libraries
 from copy import deepcopy
@@ -13,8 +13,8 @@ import sqlite3
 
 # Internal Python files
 from kaplan import __version__ as version
+from kaplan.bilingual_file import XLIFF
 from .tmx import TMX
-from .xliff import XLIFF
 
 
 class KDB:

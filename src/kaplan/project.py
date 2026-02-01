@@ -8,8 +8,8 @@ from pathlib import PurePosixPath
 import zipfile
 
 # Internal Python files
-from .kdb import KDB
 from .bilingual_file import open_bilingual_file
+from .translation_memory import KDB
 
 
 class Project:

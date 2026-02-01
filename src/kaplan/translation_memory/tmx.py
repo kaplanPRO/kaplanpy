@@ -1,7 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
-from lxml import etree
+import lxml.etree as etree
 from kaplan import __version__
 
 
