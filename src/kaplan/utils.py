@@ -14,7 +14,7 @@ def remove_dir(path_to_dir):
         os.rmdir(root)
 
 
-def split_into_sentences(text_unit: string):
+def split_into_sentences(text_unit: str):
     _regex = (
         regex.compile(
             r"(\s+|^)"
