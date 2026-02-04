@@ -15,12 +15,12 @@ class QAChecker:
         """
 
         self.letters = {}
-        self.word_counter = {}
+        self.word_counter = Counter()
 
     def build(self, target_segments):
         target_segments = "\n".join(target_segments)
         self.letters = set(
-            filter(lambda x: regex.match("\p{L}", x), set(target_segments))
+            filter(lambda x: regex.match(r"\p{L}", x), set(target_segments))
         )
 
         self.word_counter = Counter(self.__words(target_segments))
@@ -34,7 +34,7 @@ class QAChecker:
         """
         results = {}
 
-        _regex = regex.compile("([\.\!\?\:]+)$")
+        _regex = regex.compile(r"([\.\!\?\:]+)$")
 
         for i, segment in segments.items():
             if segment.get("source", "") == "":
@@ -55,8 +55,8 @@ class QAChecker:
             target_punctuation = _regex.search(target)
 
             if (
-                bool(source_punctuation) != bool(target_punctuation)
-                or source_punctuation.groups() != target_punctuation.groups()
+                source_punctuation and target_punctuation
+                and (source_punctuation.groups() != target_punctuation.groups())
             ):
                 segment_results.append({"level": "info", "type": "punctuation"})
 
@@ -115,8 +115,8 @@ class QAChecker:
         with tempfile.TemporaryDirectory() as tmpdir:
             path_letters = Path(tmpdir, "letters.txt")
             with open(path_letters, "w", encoding="UTF-8") as f:
-                for l in self.letters:
-                    f.write(l)
+                for letter in self.letters:
+                    f.write(letter)
 
             path_word_counter = Path(tmpdir, "word_counter.csv")
             with open(path_word_counter, "w", encoding="UTF-8") as csvfile:
@@ -153,6 +153,6 @@ class QAChecker:
 
     def __words(self, text):
         return filter(
-            lambda x: len(x) > 1 and regex.match("^[\p{L}'-]+$", x),
-            regex.sub("[^\p{L}\p{N}\s'-]", "", text).split(),
+            lambda x: len(x) > 1 and regex.match(r"^[\p{L}'-]+$", x),
+            regex.sub(r"[^\p{L}\p{N}\s'-]", "", text).split(),
         )
