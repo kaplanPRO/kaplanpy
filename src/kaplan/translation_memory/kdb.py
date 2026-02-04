@@ -35,13 +35,11 @@ class KDB:
             raise ValueError("Language pair is not a match!")
 
         if len(kdb_metadata) > 2:
-            self.version = tuple(map(int, (kdb_metadata[2].split("-")[0].split("."))))
+            self.version = kdb_metadata[2]
         else:
-            self.version = (0, 0, 1)
+            self.version = '0.0.1'
 
-        self.is_outdated = self.version < tuple(
-            map(int, (version.split("-")[0].split(".")))
-        )
+        self.is_outdated = self.version < version
 
     @staticmethod
     def entry_to_segment(
@@ -58,7 +56,7 @@ class KDB:
         segment = etree.Element(xml_tag)
 
         for text, tag in regex.findall(
-            "([^<>]+)?(<[^<>\s]+/>)?", source_or_target_entry
+            r"([^<>]+)?(<[^<>\s]+/>)?", source_or_target_entry
         ):
             if text != "":
                 if len(segment) == 0:
@@ -157,7 +155,7 @@ class KDB:
         """
         rows = self.conn.execute("""SELECT * FROM main""").fetchall()
 
-        if self.version < (0, 10, 0):
+        if self.version < '0.10.0':
             rows = tuple((None,) + row[:2] + (None,) + row[2:] for row in rows)
 
         return rows[first_i:last_i]
@@ -279,7 +277,7 @@ class KDB:
 
         tm_hits = []
 
-        if self.version >= (0, 10, 0):
+        if self.version >= '0.10.0':
             sql_query = """SELECT source, target, state, time, submitted_by FROM main"""
         else:
             sql_query = """SELECT source, target, time, submitted_by FROM main"""
@@ -287,7 +285,6 @@ class KDB:
         for tm_entry in self.conn.execute(sql_query).fetchall():
             sm.set_seq1(tm_entry[0])
             if sm.ratio() >= diff:
-                segment = etree.Element("segment")
 
                 source = self.entry_to_segment(
                     tm_entry[0], "source", reversed_tags, source_segment
@@ -327,7 +324,7 @@ class KDB:
                             change_span.text = ""
                     difference[-1].text += change[2:]
 
-                if self.version >= (0, 10, 0):
+                if self.version >= '0.10.0':
                     tm_hits.append(
                         (
                             sm.ratio(),
@@ -363,7 +360,7 @@ class KDB:
 
         sm = difflib.SequenceMatcher()
 
-        if self.version >= (0, 10, 0):
+        if self.version >= '0.10.0':
             sql_query = """SELECT source, target, state, time, submitted_by FROM main"""
         else:
             sql_query = """SELECT source, target, time, submitted_by FROM main"""
@@ -391,7 +388,7 @@ class KDB:
             ) / sum([word_length for word_ratio, word_length in kdb_hits_by_word])
 
             if kdb_hit_ratio >= diff:
-                if self.version >= (0, 10, 0):
+                if self.version >= '0.10.0':
                     kdb_hits.append(
                         (
                             kdb_hit_ratio,
@@ -493,7 +490,7 @@ class KDB:
             source_entries = ((entry[0],) for entry in entries)
             self.conn.executemany("""DELETE FROM main WHERE source=?""", source_entries)
 
-        if self.version >= (0, 10, 0):
+        if self.version >= '0.10.0':
             self.conn.executemany(
                 """INSERT INTO main(source, target, state, time, submitted_by) VALUES (?,?,?,?,?)""",
                 entries,
@@ -518,7 +515,7 @@ class KDB:
         if overwrite:
             self.conn.execute("""DELETE FROM main WHERE source=?""", (source,))
 
-        if self.version >= (0, 10, 0):
+        if self.version >= '0.10.0':
             entry = (source, target, state, datetime.utcnow().isoformat(), submitted_by)
 
             self.conn.execute(
@@ -576,5 +573,5 @@ class KDB:
             self.conn.execute('''UPDATE metadata SET version="{0}"'''.format(version))
             self.conn.commit()
 
-        self.version = tuple(map(int, (version.split("-")[0].split("."))))
+        self.version = version
         self.is_outdated = False

@@ -48,7 +48,7 @@ class TMX:
             yield tu
 
     @classmethod
-    def new(cls, name, srclang, datatype="xml", o_tmf=None):
+    def new(cls, name, srclang, o_tmf=None):
         xml_root = etree.Element("tmx", attrib={"version": "1.4"})
 
         xml_header = etree.SubElement(
@@ -57,7 +57,6 @@ class TMX:
             attrib={
                 "creationtool": "kaplanpy",
                 "creationtoolversion": __version__,
-                "datatype": datatype,
                 "datatype": "xml",
                 "adminlang": srclang,
                 "srclang": srclang,
