@@ -216,8 +216,8 @@ class XLIFF:
 
         return translation_units
 
-    def merge_segments(self, *args):
-        raise TypeError("This function is available for the kxliff.KXLIFF class only.")
+    def merge_segments(self, list_of_segments):
+        raise NotImplementedError("This function is available for the KXLIFF class only.")
 
     @classmethod
     def open_bilingual_file(cls, bilingual_file):
