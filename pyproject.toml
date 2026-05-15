@@ -5,7 +5,7 @@ authors = [{ name = "Kaplan", email = "contact@kaplan.pro" }]
 description = "Computer-assisted translation tool package"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = ["lxml>=6.0.2,<7", "regex==2026.1.15"]
 keywords = [
     "CAT",
