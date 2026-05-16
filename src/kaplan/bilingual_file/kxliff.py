@@ -291,17 +291,16 @@ class KXLIFF(XLIFF):
         if target_filename is None:
             target_filename = source_filename
 
-        if source_filename.lower().endswith(
-            (".docx", ".odp", ".ods", ".odt", ".po", ".json", ".txt")
-        ):
-            source_suffix = Path(source_filename).suffix.lower().strip().lstrip(r"\.")
-            parser = source_to_parser_map[SourceTypeEnum(source_suffix)](nsmap)
-            parser.generate_target_file(
-                self.xml_root, output_directory, path_to_source_file, target_filename
-            )
+        source_suffix = path_to_source_file.suffix.lower().strip().lstrip(r"\.")
+        try:
+            source_type = SourceTypeEnum(source_suffix)
+        except ValueError:
+            raise ValueError(f"Filetype .{source_suffix} incompatible for this task!")
 
-        else:
-            raise ValueError("Filetype incompatible for this task!")
+        parser = source_to_parser_map[source_type](nsmap)
+        parser.generate_target_file(
+            self.xml_root, output_directory, path_to_source_file, target_filename
+        )
 
     def get_segment_history(self, segment_i):
         """
@@ -467,26 +466,27 @@ class KXLIFF(XLIFF):
             "{{{0}}}placeholder".format(nsmap["kaplan"])
         )
 
-        if name.lower().endswith(
-            (".docx", ".odp", ".ods", ".odt", ".po", ".json", ".txt")
-        ):
-            source_suffix = Path(source_file_path).suffix.lower().strip().lstrip(r"\.")
+        source_suffix = source_file_path.suffix.lower().strip().lstrip(r"\.")
+        try:
+            source_type = SourceTypeEnum(source_suffix)
+        except ValueError:
+            raise ValueError(f"Filetype .{source_suffix} incompatible for this task!")
 
-            parser = source_to_parser_map[SourceTypeEnum(source_suffix)](nsmap)
-            internal_files, translation_units = parser.parse(
-                source_file_path, segmentation=segmentation
-            )
+        parser = source_to_parser_map[source_type](nsmap)
+        internal_files, translation_units = parser.parse(
+            source_file_path, segmentation=segmentation
+        )
 
-            if internal_files is not None:
-                if isinstance(internal_files, list):
-                    source_file_reference.extend(internal_files)
-                else:
-                    source_file_reference.insert(0, internal_files)
+        if internal_files is not None:
+            if isinstance(internal_files, list):
+                source_file_reference.extend(internal_files)
+            else:
+                source_file_reference.insert(0, internal_files)
 
-            source_file_reference.extend(translation_units)
+        source_file_reference.extend(translation_units)
 
-            if source_suffix == "po" and segmentation == "default":
-                segmentation = False
+        if source_type == SourceTypeEnum.PO and segmentation == "default":
+            segmentation = False
 
         if not segmentation:
             for tu in source_file_reference.findall("xliff:unit", nsmap):
