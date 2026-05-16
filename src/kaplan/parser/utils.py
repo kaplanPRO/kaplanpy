@@ -1,6 +1,7 @@
 from enum import Enum
 
 from .docx import DOCXParser
+from .json import JSONParser
 from .odf import ODFParser
 from .po import POParser
 
@@ -11,6 +12,7 @@ class SourceTypeEnum(Enum):
     ODS = "ods"
     ODP = "odp"
     PO = "po"
+    JSON = "json"
 
 
 source_to_parser_map = {
@@ -19,4 +21,5 @@ source_to_parser_map = {
     SourceTypeEnum.ODS: ODFParser,
     SourceTypeEnum.ODP: ODFParser,
     SourceTypeEnum.PO: POParser,
+    SourceTypeEnum.JSON: JSONParser,
 }
