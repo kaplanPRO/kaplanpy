@@ -65,7 +65,7 @@ class SDLXLIFF(XLIFF):
         else:
             segment_details.attrib.pop("locked", None)
 
-    def update_segment(
+    def update_segment(  # pyright: ignore[reportIncompatibleMethodOverride]
         self, target_segment, tu_no, segment_no, segment_state, submitted_by
     ):
         """

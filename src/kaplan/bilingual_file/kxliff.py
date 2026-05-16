@@ -392,6 +392,8 @@ class KXLIFF(XLIFF):
             segments.append(segment)
             segment_ids.append(translation_unit.index(segment))
 
+        assert translation_unit is not None
+
         for segment in translation_unit[min(segment_ids) : max(segment_ids) + 1]:
             if etree.QName(segment).localname == "segment" and segment not in segments:
                 raise ValueError("Segments are not consecutive.")
@@ -924,11 +926,11 @@ class KXLIFF(XLIFF):
         else:
             raise ValueError("LQI not found.")
 
-    def update_segment(
+    def update_segment(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         target_segment,
-        tu_i,
-        segment_i,
+        tu_no,
+        segment_no,
         segment_state=None,
         submitted_by=None,
         save_history=True,
@@ -940,11 +942,11 @@ class KXLIFF(XLIFF):
             segment_state == "translated" or segment_state == "reviewed"
         ):
             tu = self.xml_root.xpath(
-                './/xliff:unit[@id="{0}"]|unit[@id="{0}"]'.format(tu_i),
+                './/xliff:unit[@id="{0}"]|unit[@id="{0}"]'.format(tu_no),
                 namespaces=nsmap,
             )[0]
             segment = tu.find(
-                'xliff:segment[@id="{0}"]'.format(segment_i), namespaces=nsmap
+                'xliff:segment[@id="{0}"]'.format(segment_no), namespaces=nsmap
             )
             target = segment.find("xliff:target", namespaces=nsmap)
             if target is not None and (len(target) > 0 or target.text is not None):
@@ -954,13 +956,13 @@ class KXLIFF(XLIFF):
                         tu, "{{{0}}}history".format(nsmap["kaplan"])
                     )
                 segment_history = tu_history.find(
-                    'kaplan:segment[@id="{0}"]'.format(segment_i), namespaces=nsmap
+                    'kaplan:segment[@id="{0}"]'.format(segment_no), namespaces=nsmap
                 )
                 if segment_history is None:
                     segment_history = etree.SubElement(
                         tu_history,
                         "{{{0}}}segment".format(nsmap["kaplan"]),
-                        {"id": str(segment_i)},
+                        {"id": str(segment_no)},
                     )
                 if len(segment_history) == 0 or etree.tostring(
                     segment_history[-1], encoding="UTF-8"
@@ -977,5 +979,5 @@ class KXLIFF(XLIFF):
                     segment_history.append(copy_target)
 
         super().update_segment(
-            target_segment, tu_i, segment_i, segment_state, submitted_by
+            target_segment, tu_no, segment_no, segment_state, submitted_by
         )
