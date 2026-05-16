@@ -292,27 +292,13 @@ class KXLIFF(XLIFF):
             target_filename = source_filename
 
         if source_filename.lower().endswith(
-            (".docx", ".odp", ".ods", ".odt", ".po", ".json")
+            (".docx", ".odp", ".ods", ".odt", ".po", ".json", ".txt")
         ):
             source_suffix = Path(source_filename).suffix.lower().strip().lstrip(r"\.")
             parser = source_to_parser_map[SourceTypeEnum(source_suffix)](nsmap)
             parser.generate_target_file(
                 self.xml_root, output_directory, path_to_source_file, target_filename
             )
-
-        elif source_filename.lower().endswith(".txt"):
-            with open((output_directory / target_filename), "w") as outfile:
-                for trans_unit in source_file.findall(".//unit", self.nsmap):
-                    for segment in trans_unit.xpath(
-                        ".//xliff:segment|.//xliff:ignorable",
-                        namespaces={"xliff": self.nsmap[None]},
-                    ):
-                        target = segment.find("target", self.nsmap)
-                        if target is not None and target.text is not None:
-                            outfile.write(target.text)
-
-                        else:
-                            outfile.write(segment.find("source", self.nsmap).text)
 
         else:
             raise ValueError("Filetype incompatible for this task!")
@@ -481,7 +467,9 @@ class KXLIFF(XLIFF):
             "{{{0}}}placeholder".format(nsmap["kaplan"])
         )
 
-        if name.lower().endswith((".docx", ".odp", ".ods", ".odt", ".po", ".json")):
+        if name.lower().endswith(
+            (".docx", ".odp", ".ods", ".odt", ".po", ".json", ".txt")
+        ):
             source_suffix = Path(source_file_path).suffix.lower().strip().lstrip(r"\.")
 
             parser = source_to_parser_map[SourceTypeEnum(source_suffix)](nsmap)
@@ -499,22 +487,6 @@ class KXLIFF(XLIFF):
 
             if source_suffix == "po" and segmentation == "default":
                 segmentation = False
-
-        elif name.lower().endswith(".txt"):
-            with open(source_file_path, encoding="UTF-8") as source_file:
-                for line in source_file:
-                    _tu = deepcopy(_tu_template)
-                    _tu.attrib["id"] = str(_tu_counter)
-                    source_file_reference.append(_tu)
-                    _tu_counter += 1
-                    _source = _tu.find(".//xliff:source", nsmap)
-                    _target = _tu.find(".//xliff:target", nsmap)
-
-                    if line.strip() == "":
-                        _tu[0].tag = "{{{0}}}ignorable".format(nsmap["xliff"])
-                        _tu[0].remove(_target)
-
-                    _source.text = line
 
         if not segmentation:
             for tu in source_file_reference.findall("xliff:unit", nsmap):
