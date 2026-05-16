@@ -1,0 +1,6 @@
+{
+  "key1": "Value 1",
+  "nested": {
+    "key2": "Value 2"
+  }
+}
