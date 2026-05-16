@@ -17,6 +17,9 @@ class POParser:
         target_filename: str | None,
     ):
         parsed_source_file = xml_root.find("xliff:file", self.nsmap)
+        if parsed_source_file is None:
+            raise ValueError("No source file reference found in XLIFF.")
+
         po_entries = {}
 
         for trans_unit in parsed_source_file.findall(".//xliff:unit", self.nsmap):
@@ -25,19 +28,20 @@ class POParser:
             if po_id not in po_entries:
                 po_entries[po_id] = [trans_unit.attrib["metadata"], [], []]
 
-            segment = ["", ""]
+            segment_texts = ["", ""]
             for xml_segment in trans_unit.xpath(
                 ".//xliff:segment|.//xliff:ignorable",
                 namespaces={"xliff": self.nsmap["xliff"]},
             ):
-                segment[0] += xml_segment.find("xliff:source", self.nsmap).text
+                segment_texts[0] += xml_segment.find("xliff:source", self.nsmap).text
                 target = xml_segment.find("xliff:target", self.nsmap)
                 if target is not None and target.text is not None:
-                    segment[1] += target.text
+                    segment_texts[1] += target.text
             else:
-                for s_i in range(len(segment)):
+                formatted_segments: list[list[str]] = [[], []]
+                for s_i in range(len(segment_texts)):
                     source_or_target_segment = [""]
-                    for regex_hit in regex.findall(r"([^\s]+)?([\s]+)?", segment[s_i]):
+                    for regex_hit in regex.findall(r"([^\s]+)?([\s]+)?", segment_texts[s_i]):
                         for text_or_space in regex_hit:
                             if text_or_space != "" and (
                                 len(source_or_target_segment[-1]) >= 80
@@ -59,14 +63,23 @@ class POParser:
                                 '"' + source_or_target_segment[i] + '"'
                             )
 
-                        segment[s_i] = source_or_target_segment
+                        formatted_segments[s_i] = source_or_target_segment
 
                 po_entries[po_id][1].append(
-                    "{0} {1}".format(keys[0], "\n".join(segment[0]))
+                    "{0} {1}".format(keys[0], "\n".join(formatted_segments[0]))
                 )
                 po_entries[po_id][2].append(
-                    "{0} {1}".format(keys[1], "\n".join(segment[1]))
+                    "{0} {1}".format(keys[1], "\n".join(formatted_segments[1]))
                 )
+
+        if target_filename is None:
+            if path_to_source_file is None:
+                path_to_source_file = parsed_source_file.attrib["original"]
+
+            if path_to_source_file is None:
+                raise ValueError("Could not determine target filename.")
+
+            target_filename = Path(path_to_source_file).name
 
         with open((Path(output_directory) / target_filename), "w") as outfile:
             outfile.write(
@@ -82,9 +95,9 @@ class POParser:
                     outfile.write("\n")
 
     def parse(
-        self, source_file: Path | str, segmentation: str | bool = "default"
+        self, source_file_path: Path | str, segmentation: str | bool = "default"
     ) -> tuple[etree.Element, list[etree.Element]]:
-        source_file_path = Path(source_file)
+        source_file_path = Path(source_file_path)
 
         def entry_checkpoint(entry, entry_metadata, entries):
             if entry.get("msgid", None) is not None:

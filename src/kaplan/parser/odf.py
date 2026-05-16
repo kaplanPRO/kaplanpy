@@ -34,6 +34,9 @@ class ODFParser:
         target_filename: str | None,
     ):
         parsed_source_file = xml_root.find("xliff:file", self.nsmap)
+        if parsed_source_file is None:
+            raise ValueError("No source file reference found in XLIFF.")
+
         source_nsmap = parsed_source_file[0][0].nsmap
         target_units = etree.Element("target-units")
 
@@ -167,17 +170,23 @@ class ODFParser:
                 placeholder_parent.insert(placeholder_i, child)
                 placeholder_i += 1
 
-        path_to_source_file = Path(
-            path_to_source_file
-            if path_to_source_file
-            else parsed_source_file.attrib["original"]
-        )
-        target_filename = (
-            target_filename if target_filename else path_to_source_file.name
-        )
+        if target_filename is None:
+            if path_to_source_file is None:
+                path_to_source_file = parsed_source_file.attrib.get("original")
+
+            if path_to_source_file is None:
+                raise ValueError("Could not determine target filename.")
+
+            target_filename = Path(path_to_source_file).name
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_dir_path = Path(tmp_dir)
+
+            if path_to_source_file is None:
+                path_to_source_file = parsed_source_file.attrib["original"]
+
+            if path_to_source_file is None:
+                raise ValueError("Could not determine source file path.")
 
             with zipfile.ZipFile(path_to_source_file) as source_zip:
                 source_zip.extractall(tmp_dir_path)
@@ -198,12 +207,12 @@ class ODFParser:
                     )
 
     def parse(
-        self, source_file: Path | str, **kwargs
+        self, source_file_path: Path | str, **kwargs
     ) -> tuple[list[etree.Element], list[etree.Element]]:
-        source_file = Path(source_file)
+        source_file_path = Path(source_file_path)
 
         internal_files = []
-        with zipfile.ZipFile(source_file) as source_zip:
+        with zipfile.ZipFile(source_file_path) as source_zip:
             for zip_child in source_zip.namelist():
                 if zip_child.lower().endswith("content.xml"):
                     internal_file = etree.Element(

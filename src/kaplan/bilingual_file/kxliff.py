@@ -5,13 +5,9 @@ import regex
 # Standard Python libraries
 from copy import deepcopy
 from datetime import datetime
-import html
-import json
 from pathlib import Path
 import random
 import string
-import tempfile
-import zipfile
 
 # Internal Python files
 from kaplan.parser import SourceTypeEnum, source_to_parser_map
@@ -280,10 +276,15 @@ class KXLIFF(XLIFF):
 
         output_directory = Path(output_directory)
 
-        source_file = self.xml_root.find("file", self.nsmap)
+        source_file_element = self.xml_root.find("file", self.nsmap)
 
         if path_to_source_file is None:
-            path_to_source_file = source_file.attrib["original"]
+            if source_file_element is None:
+                raise ValueError("No source file reference found in XLIFF.")
+            path_to_source_file = source_file_element.attrib.get("original")
+            if path_to_source_file is None:
+                raise ValueError("Could not determine source file path.")
+
         path_to_source_file = Path(path_to_source_file)
 
         source_filename = path_to_source_file.name

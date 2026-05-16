@@ -34,6 +34,9 @@ class DOCXParser:
         target_filename: str | None,
     ):
         parsed_source_file = xml_root.find("xliff:file", self.nsmap)
+        if parsed_source_file is None:
+            raise ValueError("No source file reference found in XLIFF.")
+
         source_nsmap = parsed_source_file[0][0].nsmap
         target_units = etree.Element("target-units")
         for trans_unit in parsed_source_file.findall(".//xliff:unit", self.nsmap):
@@ -259,11 +262,11 @@ class DOCXParser:
                     )
 
     def parse(
-        self, source_file: Path | str, **kwargs
+        self, source_file_path: Path | str, **kwargs
     ) -> tuple[etree.Element, list[etree.Element]]:
-        source_file = Path(source_file)
+        source_file_path = Path(source_file_path)
 
-        with zipfile.ZipFile(source_file) as source_zip:
+        with zipfile.ZipFile(source_file_path) as source_zip:
             source_file_xml = etree.parse(
                 source_zip.open("word/document.xml")
             ).getroot()

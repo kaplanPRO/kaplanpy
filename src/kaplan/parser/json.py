@@ -17,6 +17,9 @@ class JSONParser:
         target_filename: str | None,
     ):
         parsed_source_file = xml_root.find("xliff:file", self.nsmap)
+        if parsed_source_file is None:
+            raise ValueError("No source file reference found in XLIFF.")
+
         target_list = []
 
         for trans_unit in parsed_source_file.findall(".//xliff:unit", self.nsmap):
@@ -70,13 +73,22 @@ class JSONParser:
         for segment in target_list:
             target_dict = _mergedict(target_dict, segment)
 
+        if target_filename is None:
+            if path_to_source_file is None:
+                path_to_source_file = parsed_source_file.attrib["original"]
+
+            if path_to_source_file is None:
+                raise ValueError("Could not determine target filename.")
+
+            target_filename = Path(path_to_source_file).name
+
         with open((Path(output_directory) / target_filename), "w") as outfile:
             json.dump(target_dict, outfile, indent=4)
 
     def parse(
-        self, source_file: Path | str, **kwargs
+        self, source_file_path: Path | str, **kwargs
     ) -> tuple[None, list[etree.Element]]:
-        source_file_path = Path(source_file)
+        source_file_path = Path(source_file_path)
 
         translation_units = []
 
