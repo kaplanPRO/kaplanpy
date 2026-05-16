@@ -291,79 +291,12 @@ class KXLIFF(XLIFF):
         if target_filename is None:
             target_filename = source_filename
 
-        if source_filename.lower().endswith((".docx", ".odp", ".ods", ".odt")):
+        if source_filename.lower().endswith((".docx", ".odp", ".ods", ".odt", ".po")):
             source_suffix = Path(source_filename).suffix.lower().strip().lstrip(r"\.")
             parser = source_to_parser_map[SourceTypeEnum(source_suffix)](nsmap)
             parser.generate_target_file(
                 self.xml_root, output_directory, path_to_source_file, target_filename
             )
-
-        elif source_filename.lower().endswith(".po"):
-            po_entries = {}
-
-            for trans_unit in source_file.findall(".//unit", self.nsmap):
-                po_id = int(trans_unit.attrib.get("rid", trans_unit.attrib["id"]))
-                keys = trans_unit.attrib["keys"].split(";")
-                if po_id not in po_entries:
-                    po_entries[po_id] = [trans_unit.attrib["metadata"], [], []]
-
-                segment = ["", ""]
-                for xml_segment in trans_unit.xpath(
-                    ".//xliff:segment|.//xliff:ignorable",
-                    namespaces={"xliff": self.nsmap[None]},
-                ):
-                    segment[0] += xml_segment.find("source", self.nsmap).text
-                    target = xml_segment.find("target", self.nsmap)
-                    if target is not None and target.text is not None:
-                        segment[1] += target.text
-                else:
-                    for s_i in range(len(segment)):
-                        source_or_target_segment = [""]
-                        for regex_hit in regex.findall(
-                            "([^\s]+)?([\s]+)?", segment[s_i]
-                        ):
-                            for text_or_space in regex_hit:
-                                if text_or_space != "" and (
-                                    len(source_or_target_segment[-1]) >= 80
-                                    or len(source_or_target_segment[-1] + text_or_space)
-                                    >= 80
-                                ):
-                                    source_or_target_segment.append(text_or_space)
-                                else:
-                                    source_or_target_segment[-1] += text_or_space
-                        else:
-                            if (
-                                len(source_or_target_segment) > 1
-                                and source_or_target_segment[0] != ""
-                            ):
-                                source_or_target_segment.insert(0, "")
-
-                            for i in range(len(source_or_target_segment)):
-                                source_or_target_segment[i] = (
-                                    '"' + source_or_target_segment[i] + '"'
-                                )
-
-                            segment[s_i] = source_or_target_segment
-
-                    po_entries[po_id][1].append(
-                        "{0} {1}".format(keys[0], "\n".join(segment[0]))
-                    )
-                    po_entries[po_id][2].append(
-                        "{0} {1}".format(keys[1], "\n".join(segment[1]))
-                    )
-
-            with open((output_directory / target_filename), "w") as outfile:
-                outfile.write(
-                    source_file.find("kaplan:internal-file", self.nsmap).text + "\n"
-                )
-
-                for po_entry_i in sorted(po_entries):
-                    po_entry = po_entries[po_entry_i]
-                    outfile.write(po_entry[0] + "\n")
-                    for line in po_entry[1] + po_entry[2]:
-                        outfile.write(line + "\n")
-                    else:
-                        outfile.write("\n")
 
         elif source_filename.lower().endswith(".txt"):
             with open((output_directory / target_filename), "w") as outfile:
@@ -602,118 +535,22 @@ class KXLIFF(XLIFF):
             "{{{0}}}placeholder".format(nsmap["kaplan"])
         )
 
-        if name.lower().endswith(".docx"):
+        if name.lower().endswith((".docx", ".odp", ".ods", ".odt", ".po")):
             source_suffix = Path(source_file_path).suffix.lower().strip().lstrip(r"\.")
 
             parser = source_to_parser_map[SourceTypeEnum(source_suffix)](nsmap)
-            internal_file, translation_units = parser.parse(source_file_path)
-
-            source_file_reference.append(internal_file)
-            source_file_reference.extend(translation_units)
-
-        elif name.lower().endswith((".odp", ".ods", ".odt")):
-            source_suffix = Path(source_file_path).suffix.lower().strip().lstrip(r"\.")
-
-            parser = source_to_parser_map[SourceTypeEnum(source_suffix)](nsmap)
-            internal_files, translation_units = parser.parse(source_file_path)
-
-            source_file_reference.extend(internal_files)
-            source_file_reference.extend(translation_units)
-
-        elif name.lower().endswith(".po"):
-
-            def entry_checkpoint(entry, entry_metadata, entries):
-                if entry.get("msgid", None) is not None:
-                    entry["metadata"] = "\n".join(entry_metadata)
-                    entries.append(entry)
-
-                return entries
-
-            entries = []
-
-            regex_compile = regex.compile('([a-z0-9\[\]_]+)?\s?"(.*?)"$')
-
-            with open(source_file_path, encoding="UTF-8") as po_file:
-                entry = {}
-                entry_metadata = []
-                last_element = ""
-
-                for line in po_file:
-                    line = line.strip()
-
-                    if line.startswith("#"):
-                        entry_metadata.append(line)
-                        continue
-
-                    if line == "":
-                        entries = entry_checkpoint(entry, entry_metadata, entries)
-                        entry, entry_metadata, last_element = {}, [], ""
-                        continue
-
-                    regex_match = regex_compile.search(line)
-
-                    if regex_match is None:
-                        continue
-
-                    if regex_match.group(1):
-                        last_element = regex_match.group(1)
-                        entry[last_element] = ""
-
-                    if regex_match.group(2):
-                        entry[last_element] += regex_match.group(2)
-                else:
-                    entries = entry_checkpoint(entry, entry_metadata, entries)
-
-            po_metadata = '{0}\nmsgid ""\nmsgstr ""\n{1}\n'.format(
-                entries[0]["metadata"],
-                "\n".join(
-                    '"' + line + '\\n"'
-                    for line in entries[0]["msgstr"].split("\\n")
-                    if line
-                ),
+            internal_files, translation_units = parser.parse(
+                source_file_path, segmentation=segmentation
             )
 
-            source_file_content = etree.Element(
-                "{{{0}}}internal-file".format(nsmap["kaplan"]),
-                nsmap={None: nsmap["kaplan"]},
-            )
-            source_file_content.attrib["{{{0}}}rel".format(nsmap["kaplan"])] = "self"
-            source_file_content.text = po_metadata
-            source_file_reference.insert(0, source_file_content)
+            if isinstance(internal_files, list):
+                source_file_reference.extend(internal_files)
+            else:
+                source_file_reference.insert(0, internal_files)
 
-            entries = entries[1:]
+            source_file_reference.extend(translation_units)
 
-            for entry in entries:
-                _tu = deepcopy(_tu_template)
-                _tu.attrib["id"] = str(_tu_counter)
-                _tu.attrib["metadata"] = entry.get("metadata", "")
-                source_file_reference.append(_tu)
-                _tu_counter += 1
-                _source = _tu.find(".//xliff:source", nsmap)
-                _target = _tu.find(".//xliff:target", nsmap)
-                _source.text = entry["msgid"]
-                _target_key = "msgstr" if "msgstr" in entry else "msgstr[0]"
-                _target.text = entry[_target_key]
-
-                _tu.attrib["keys"] = ";".join(("msgid", _target_key))
-
-                if "msgid_plural" in entry or "plural" in entry:
-                    _tu.attrib["rid"] = _tu.attrib["id"]
-                    _source_key = (
-                        "msgid_plural" if "msgid_plural" in entry else "plural"
-                    )
-                    _tu = deepcopy(_tu)
-                    _tu.attrib["id"] = str(_tu_counter)
-                    source_file_reference.append(_tu)
-                    _tu_counter += 1
-                    _source = _tu.find(".//xliff:source", nsmap)
-                    _target = _tu.find(".//xliff:target", nsmap)
-                    _source.text = entry[_source_key]
-                    _target.text = entry.get("msgstr[1]", "")
-
-                    _tu.attrib["keys"] = ";".join((_source_key, "msgstr[1]"))
-
-            if segmentation == "default":
+            if source_suffix == "po" and segmentation == "default":
                 segmentation = False
 
         elif name.lower().endswith(".txt"):

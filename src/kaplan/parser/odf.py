@@ -198,7 +198,7 @@ class ODFParser:
                     )
 
     def parse(
-        self, source_file: Path | str
+        self, source_file: Path | str, **kwargs
     ) -> tuple[list[etree.Element], list[etree.Element]]:
         source_file = Path(source_file)
 

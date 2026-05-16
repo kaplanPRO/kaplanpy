@@ -259,7 +259,7 @@ class DOCXParser:
                     )
 
     def parse(
-        self, source_file: Path | str
+        self, source_file: Path | str, **kwargs
     ) -> tuple[etree.Element, list[etree.Element]]:
         source_file = Path(source_file)
 
