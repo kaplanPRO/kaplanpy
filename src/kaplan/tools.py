@@ -55,7 +55,8 @@ class QAChecker:
             target_punctuation = _regex.search(target)
 
             if (
-                source_punctuation and target_punctuation
+                source_punctuation
+                and target_punctuation
                 and (source_punctuation.groups() != target_punctuation.groups())
             ):
                 segment_results.append({"level": "info", "type": "punctuation"})
