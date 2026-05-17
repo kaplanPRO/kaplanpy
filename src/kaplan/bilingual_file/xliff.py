@@ -415,14 +415,16 @@ class XLIFF:
                         else:
                             if any_child.text.startswith("</"):
                                 preceding_sibling = any_child.getprevious()
-                                if preceding_sibling is not None:
+                                if preceding_sibling is None:
                                     if target_segment.text is None:
                                         target_segment.text = ""
-                                    target_segment.text += any_child.tail
+                                    if any_child.tail:
+                                        target_segment.text += any_child.tail
                                 else:
                                     if preceding_sibling.tail is None:
                                         preceding_sibling.tail = ""
-                                    preceding_sibling.tail += any_child.tail
+                                    if any_child.tail:
+                                        preceding_sibling.tail += any_child.tail
                                 target_segment.remove(any_child)
                             else:
                                 any_child.text = any_child.tail
