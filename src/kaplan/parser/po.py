@@ -41,7 +41,9 @@ class POParser:
                 formatted_segments: list[list[str]] = [[], []]
                 for s_i in range(len(segment_texts)):
                     source_or_target_segment = [""]
-                    for regex_hit in regex.findall(r"([^\s]+)?([\s]+)?", segment_texts[s_i]):
+                    for regex_hit in regex.findall(
+                        r"([^\s]+)?([\s]+)?", segment_texts[s_i]
+                    ):
                         for text_or_space in regex_hit:
                             if text_or_space != "" and (
                                 len(source_or_target_segment[-1]) >= 80
